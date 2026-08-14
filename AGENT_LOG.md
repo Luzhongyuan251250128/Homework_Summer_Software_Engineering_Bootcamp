@@ -72,6 +72,24 @@
   3. 解决 `.gitignore` 合并冲突（main 的 `.worktrees/` 行 vs task/t1 的 9 行）——首行为 GBK 编码，采用 git blob 字节级拼接保真合并
 - **学到的教训**：① subagent 沙箱写权限决定 worktree 位置，嵌套方案可行且与"每 task 一 worktree"兼容；② 本环境 pytest 统一 `-p no:cacheprovider` 避免沙箱缓存写入残留；③ `.gitignore` 首行 GBK，任何文本工具重写都会损坏，必须字节级操作
 
+## 2026-08-14（时间待用户补充）· 后端实现完成（Task 2~11，Wave 2~5）
+
+- **触发的技能**：`subagent-driven-development` + `test-driven-development`（每 task 一个新鲜 subagent，两阶段评审后 `--no-ff` 合入 main）
+- **关键配置**：worktree 嵌套于 `.worktrees/taskN`（沙箱约束）；每 task 独立分支 `task/taskN` + 独立 commit + 评审后 merge
+- **task 完成表**（subagent 标识 / commit / merge）：
+  - T2 数据层 t2-ds4flash `987c5ba`→`46c08b2`；T3 安全认证 t3-ds4flash `2a06d99`→`78c54f2`
+  - T4 Git 采集 t4-ds4flash `503b853`→`d76f739`；T5 估算统计 t5-ds4flash `1ec0375`→`0b32cbb`
+  - T6 风险引擎 t6-ds4flash `33b8ab9`→`d3102eb`；T7 LLM 服务 llm-t7 `6db6c69`→`4141db7`
+  - T8 报告服务 t8-ds4flash `51177aa`→`f826401`；T9 配置 API t9-ds4flash `9e23621`→`a7e0597`
+  - T10 同步统计 sync-stats-impl `f3ef4a5`→`1d7ea9e`；T11 报告 API t11-ds4flash `177acda`→`dcdcaf2`
+- **subagent 自主抓出的 PLAN 缺陷（第 6~8 个，待回填）**：
+  6. T9 测试计数：PLAN 写 9 passed，其自带代码实际 7+3=10（subagent 按代码原样实现全绿）；
+  7. T11 隐藏依赖：PLAN 称"可与 T10 并行"，实际 `reports.py` 顶部 `from .stats import iteration_stats` 依赖 T10 产物 → 调度阻塞一次（父侧补 merge 解阻），PLAN 依赖说明需修正；
+  8. T6 test_rs1 迭代窗口缺陷（end=start 致 RS-1 永不触发，已修复，`33b8ab9` 报告确认）。
+- **人工干预**：T11 依赖解阻（task7→task11、main→task11 两次 merge，`7ef7160`/`415d629`）
+- **学到的教训**：① 派发并行 subagent 前必须核对 PLAN 依赖链的**隐藏** import 依赖（T11↔T10），仅看"可并行"标注不够；② 每个 task 完成后立即在 main 跑全量回归（T11 前 57 passed 基线）确认无回归；③ sync 测试含真实网络超时（~60s），CI 需注意超时预算
+
 ## 后续维护占位（实现阶段逐 task 追加）
 
-- [ ] T2~T20 每个 task：完成后追加一条（subagent 标识 / commit hash / 评审发现 / 人工修改）
+- [ ] T12~T20 每个 task：完成后追加一条（subagent 标识 / commit hash / 评审发现 / 人工修改）
+- [ ] 收尾回填 PLAN：缺陷 6/7/8（T9 计数、T11 依赖说明、T6 test_rs1）+ 前批缺陷核对
