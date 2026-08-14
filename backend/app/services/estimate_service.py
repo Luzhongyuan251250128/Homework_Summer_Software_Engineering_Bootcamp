@@ -49,6 +49,7 @@ def recompute_hours(db) -> None:
         row = db.query(models.HoursEstimate).filter_by(developer=developer, date=day).first()
         if row is None:
             db.add(models.HoursEstimate(developer=developer, date=day, estimated_hours=est))
-        else:
+        elif not row.is_corrected:
+            # 人工校正行（is_corrected=1）保留原始估算与校正值，不被重算覆盖（SPEC §3.3 步骤 5）
             row.estimated_hours = est
     db.commit()

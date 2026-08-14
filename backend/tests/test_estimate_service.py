@@ -54,3 +54,39 @@ def test_weekend_factor():
     c2 = commit_at(9, 30)
     c2.committed_at = datetime(2026, 1, 10, 9, 30)
     assert estimate_day([c1, c2]) == 0.5
+
+
+def test_config_params_affect_estimate(monkeypatch):
+    # 口径参数可配（SPEC §9 M3 验收）：边界修正 30→60 分钟 → 段长 0.5h + 1.0h = 1.5h
+    from app.config import settings
+    monkeypatch.setattr(settings, "segment_boundary_minutes", 60)
+    commits = [commit_at(9, 0), commit_at(9, 30)]
+    assert estimate_day(commits) == 1.5
+
+
+def test_recompute_hours_preserves_correction(db_session):
+    # 人工校正（is_corrected=1）行不被重算覆盖（SPEC §3.3 步骤 5）
+    from datetime import date
+
+    from app.services.estimate_service import recompute_hours
+
+    proj = models.Project(name="P")
+    db_session.add(proj)
+    db_session.commit()
+    repo = models.Repository(project_id=proj.id, platform="github", repo_path="org/repo",
+                             token_encrypted="x", token_last4="abcd")
+    db_session.add(repo)
+    db_session.commit()
+    db_session.add_all([
+        models.Commit(repository_id=repo.id, sha="a1", author_name="A", author_email="a@x.com",
+                      committed_at=datetime(2026, 1, 5, 9, 0), add_lines=0, del_lines=0, files_changed=1),
+        models.Commit(repository_id=repo.id, sha="a2", author_name="A", author_email="a@x.com",
+                      committed_at=datetime(2026, 1, 5, 9, 30), add_lines=0, del_lines=0, files_changed=1),
+    ])
+    db_session.add(models.HoursEstimate(developer="a@x.com", date=date(2026, 1, 5), estimated_hours=7.0,
+                                        is_corrected=True, corrected_hours=9.5, correction_note="人工"))
+    db_session.commit()
+    recompute_hours(db_session)
+    row = db_session.query(models.HoursEstimate).filter_by(developer="a@x.com", date=date(2026, 1, 5)).first()
+    assert row.estimated_hours == 7.0  # 原始估算保留，不被重算（1.0h）覆盖
+    assert row.corrected_hours == 9.5
