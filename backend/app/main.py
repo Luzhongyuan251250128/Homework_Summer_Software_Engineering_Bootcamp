@@ -2,8 +2,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Callable
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
 from .auth import AuthMiddleware
 from .db import engine, get_db, init_db
@@ -15,7 +15,8 @@ from .routers import stats as stats_router
 from .routers import sync as sync_router
 
 
-def create_app(secret: str | None = None, db: Callable | None = None) -> FastAPI:
+def create_app(secret: str | None = None, db: Callable | None = None,
+               static_dir: Path | None = None) -> FastAPI:
     from .config import settings
 
     setup_logging()
@@ -44,9 +45,20 @@ def create_app(secret: str | None = None, db: Callable | None = None) -> FastAPI
     app.include_router(stats_router.router)
     app.include_router(reports_router.router)
 
-    dist = Path(__file__).resolve().parent.parent / "static"
+    # SPA 托管：静态资源按文件返回，其余非 API 路径回退 index.html（前端路由直链/刷新）
+    dist = static_dir or (Path(__file__).resolve().parent.parent / "static")
     if dist.exists():
-        app.mount("/", StaticFiles(directory=dist, html=True), name="static")
+        index_path = dist / "index.html"
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        def spa(full_path: str):
+            if full_path.startswith("api/"):
+                raise HTTPException(status_code=404, detail="Not Found")
+            file = dist / full_path
+            if full_path and file.is_file():
+                return FileResponse(file)
+            return FileResponse(index_path)
+
     return app
 
 

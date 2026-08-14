@@ -49,3 +49,11 @@ def authed_client(client):
     resp = client.post("/api/auth/login", json={"password": "changeme"})
     assert resp.status_code == 200
     return client
+
+
+@pytest.fixture()
+def spa_static(tmp_path):
+    """临时静态目录（SPA 回退测试用）：index.html + 一个静态资源文件"""
+    (tmp_path / "index.html").write_text("<html>SPA</html>", encoding="utf-8")
+    (tmp_path / "asset.js").write_text("console.log(1)", encoding="utf-8")
+    return tmp_path
