@@ -106,6 +106,8 @@
 
 - [x] **前端 vitest 验证通过**：`npx vitest run` → **6 文件 / 9 测试全绿**（权限放开后沙箱可运行；此前"沙箱 spawn 管道限制"的降级记录保留，最终以本次实测为准）
 - [x] **后端最终回归**：63 passed（复验两次）
+- [x] **集成冒烟测试通过**（uvicorn 实启 8010 端口，真实 HTTP 走通全链路）：health ✓ / 登录会话 ✓ / 建项目 ✓ / 加仓库（token 密文 + last4 脱敏）✓ / 同步（假 token → GitHub 401 → status=failed，数据不损坏）✓ / 统计空态 ✓ / 报告无 key → 400 降级提示 ✓ / 迭代创建 ✓
+- [x] **前端生产构建**：`npm run build` → dist 构建成功（5.66s；echarts 整包致 bundle 1.2MB，非阻塞）
 - [x] **全部 20 个 task 分支已推送 origin**（task/t1、task/t2、task/task3~20 + coldstart-task5）；本地 `task/t1-test` 测试分支已清理
 - [ ] 用户验证：`docker build -t dev-hours .` + `docker run` 冷启动（本机无 docker CLI，沙箱无法执行）
 - [ ] 用户部署：Fly.io/Render，公网 URL 填 README「部署」节
