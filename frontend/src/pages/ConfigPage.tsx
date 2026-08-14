@@ -11,6 +11,25 @@ export interface Project { id: number; name: string; description: string; }
 export interface Repository { id: number; platform: string; repo_path: string; token_last4: string; last_synced_at: string | null; }
 export interface Iteration { id: number; name: string; start_date: string; end_date: string; }
 
+interface SyncResponse {
+  id: number;
+  status: "success" | "failed";
+  commits_fetched?: number | null;
+  error_message?: string | null;
+}
+
+type SyncState =
+  | { status: "loading" }
+  | { status: "success"; commits: number | null }
+  | { status: "failed"; error: string };
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const REPO_COLUMNS: Column<Repository>[] = [
   { key: "repo_path", header: "仓库", mono: true },
   {
@@ -18,6 +37,15 @@ const REPO_COLUMNS: Column<Repository>[] = [
     header: "Token",
     mono: true,
     render: (r) => <span className="muted">••••{r.token_last4}</span>,
+  },
+  {
+    key: "last_synced_at",
+    header: "最近同步",
+    render: (r) => (
+      <span className={r.last_synced_at ? "" : "muted"}>
+        {r.last_synced_at ? formatDateTime(r.last_synced_at) : "从未同步"}
+      </span>
+    ),
   },
 ];
 
@@ -39,6 +67,7 @@ export default function ConfigPage() {
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
+  const [syncStates, setSyncStates] = useState<Record<number, SyncState>>({});
 
   async function load() {
     const list = await api<Project[]>("/projects");
@@ -96,6 +125,29 @@ export default function ConfigPage() {
   async function deleteRepo(id: number) {
     await api(`/repositories/${id}`, { method: "DELETE" });
     await load();
+  }
+
+  async function syncRepo(repo: Repository) {
+    setSyncStates((prev) => ({ ...prev, [repo.id]: { status: "loading" } }));
+    try {
+      const res = await api<SyncResponse>(`/repositories/${repo.id}/sync`, { method: "POST" });
+      if (res.status === "success") {
+        setSyncStates((prev) => ({
+          ...prev,
+          [repo.id]: { status: "success", commits: res.commits_fetched ?? null },
+        }));
+      } else {
+        setSyncStates((prev) => ({
+          ...prev,
+          [repo.id]: { status: "failed", error: res.error_message || "同步失败" },
+        }));
+      }
+    } catch (err) {
+      setSyncStates((prev) => ({
+        ...prev,
+        [repo.id]: { status: "failed", error: err instanceof Error ? err.message : "同步失败" },
+      }));
+    }
   }
 
   return (
@@ -216,9 +268,28 @@ export default function ConfigPage() {
                         columns={REPO_COLUMNS}
                         rows={repos[selected]}
                         rowKey={(r) => r.id}
-                        renderRowAction={(r) => (
-                          <Button variant="danger" size="sm" onClick={() => deleteRepo(r.id)}>删除</Button>
-                        )}
+                        renderRowAction={(r) => {
+                          const state = syncStates[r.id];
+                          const loading = state?.status === "loading";
+                          return (
+                            <div className="row-actions">
+                              <div className="row-actions__btns">
+                                <Button size="sm" disabled={loading} onClick={() => syncRepo(r)}>
+                                  {loading ? "同步中…" : "同步"}
+                                </Button>
+                                <Button variant="danger" size="sm" onClick={() => deleteRepo(r.id)}>删除</Button>
+                              </div>
+                              {state?.status === "success" && (
+                                <span className="muted">
+                                  {state.commits != null ? `同步成功 · 拉取 ${state.commits} 条` : "同步成功"}
+                                </span>
+                              )}
+                              {state?.status === "failed" && (
+                                <span className="alert" role="alert">{state.error}</span>
+                              )}
+                            </div>
+                          );
+                        }}
                       />
                     ) : (
                       <EmptyState title="还没有仓库" description="添加仓库后即可同步提交数据。" />
