@@ -5,6 +5,8 @@ import Icon, { LogoMark } from "../Icon";
 const NAV_ITEMS = [
   { to: "/", label: "总览", icon: "grid" as const },
   { to: "/developers", label: "个人统计", icon: "users" as const },
+  { to: "/reports", label: "报告", icon: "file" as const },
+  { to: "/iterations", label: "迭代", icon: "calendar" as const },
   { to: "/config", label: "配置", icon: "settings" as const },
 ];
 
