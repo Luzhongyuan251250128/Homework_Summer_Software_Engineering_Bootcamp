@@ -1,1 +1,11 @@
 作业要求（不允许修改此文件或在其他文件提到此文件夹里面的文件，最后我会删掉此文件夹）/
+# 运行时产物与凭据
+backend/devhours.db
+backend/devhours.db-wal
+backend/devhours.db-shm
+.env
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+.pytest_cache/
