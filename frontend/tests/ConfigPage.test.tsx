@@ -44,14 +44,25 @@ describe("ConfigPage", () => {
   });
 
   it("删除项目：确认后以 DELETE /projects/:id?confirm=true 调用并重置选择器", async () => {
-    // fetch 序列：1) GET /projects；2) GET /projects/1/repositories；3) GET /projects/1/iterations；
-    // 4) DELETE /projects/1?confirm=true；5) 删除后 load() 的 GET /projects → 空列表（无子级请求）
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => [{ id: 1, name: "平台组", description: "" }] })
-      .mockResolvedValueOnce({ ok: true, json: async () => [] })
-      .mockResolvedValueOnce({ ok: true, json: async () => [] })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => [] });
+    // 按 URL/方法分发（含 load() 里的 GET /api/settings/llm，与 SA2 的 LLM 设置卡共存）
+    let projects: { id: number; name: string; description: string }[] = [
+      { id: 1, name: "平台组", description: "" },
+    ];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (url === "/api/projects" && method === "GET") return jsonResponse(projects);
+      if (url === "/api/projects/1/repositories" && method === "GET") return jsonResponse([]);
+      if (url === "/api/projects/1/iterations" && method === "GET") return jsonResponse([]);
+      if (url === "/api/projects/1?confirm=true" && method === "DELETE") {
+        projects = [];
+        return jsonResponse({ ok: true });
+      }
+      if (url === "/api/settings/llm" && method === "GET") {
+        return jsonResponse({ configured: false, source: null });
+      }
+      throw new Error(`unexpected fetch: ${method} ${url}`);
+    });
     vi.stubGlobal("fetch", fetchMock);
     render(<MemoryRouter><ConfigPage /></MemoryRouter>);
 
@@ -71,10 +82,19 @@ describe("ConfigPage", () => {
   });
 
   it("删除项目：取消确认时不发送 DELETE 请求", async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => [{ id: 1, name: "平台组", description: "" }] })
-      .mockResolvedValueOnce({ ok: true, json: async () => [] })
-      .mockResolvedValueOnce({ ok: true, json: async () => [] });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (url === "/api/projects" && method === "GET") {
+        return jsonResponse([{ id: 1, name: "平台组", description: "" }]);
+      }
+      if (url === "/api/projects/1/repositories" && method === "GET") return jsonResponse([]);
+      if (url === "/api/projects/1/iterations" && method === "GET") return jsonResponse([]);
+      if (url === "/api/settings/llm" && method === "GET") {
+        return jsonResponse({ configured: false, source: null });
+      }
+      throw new Error(`unexpected fetch: ${method} ${url}`);
+    });
     vi.stubGlobal("fetch", fetchMock);
     render(<MemoryRouter><ConfigPage /></MemoryRouter>);
 
