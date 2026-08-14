@@ -673,11 +673,12 @@ def test_health_is_public():
     assert client.get("/api/health").status_code == 200
 
 
-def test_login_then_access():
-    client = make_client()
+def test_login_then_access(client):
     resp = client.post("/api/auth/login", json={"password": "changeme"})
     assert resp.status_code == 200
-    assert client.get("/api/projects").status_code == 200
+    # /api/projects 路由属 T9，T3 阶段不存在：
+    # 404 = 已通过认证中间件（未认证同路径返回 401），以此验证放行
+    assert client.get("/api/projects").status_code == 404
 ```
 
 - [ ] **Step 2: 运行确认失败**
@@ -830,9 +831,9 @@ def authed_client(client):
 - [ ] **Step 4: 运行确认通过**
 
 Run: `cd backend && python -m pytest tests/test_security.py tests/test_auth.py -v`
-Expected: PASS（5 passed）。
+Expected: PASS（6 passed）。
 
-> 注：`/api/auth/login` 路由本体在 T9 实现；本 task 仅中间件与 `expected_session` 校验逻辑。若 `test_login_then_access` 因 404 失败，在 T9 前临时于 `main.py` 加一个最小 login 路由（校验 `password == settings.admin_password` 后 set-cookie 并返回 200）——这符合本 task 的验证目标。
+> 注：`/api/auth/login` 路由本体在 T9 实现；本 task 仅中间件与 `expected_session` 校验逻辑。冷启动验证修订（2026-08-14）：T9 前临时于 `main.py` 加最小 login 路由（校验 `password == settings.admin_password` 后 set-cookie 并返回 200），同时 `create_app` 需先设置 `app.state.session_secret`（login stub 与中间件共用同一 secret，否则登录抛 `AttributeError`）；`/api/projects` 在 T3 阶段无路由，故 `test_login_then_access` 断言 404（已认证放行）而非 200——未认证 401 / 已认证 404 的区分正是本 task 的验证点，T9 实现真实路由后删除 stub。
 
 - [ ] **Step 5: Commit**
 
@@ -1132,7 +1133,7 @@ def sync_repository(db, repo: models.Repository, master_key: str,
 - [ ] **Step 4: 运行确认通过**
 
 Run: `cd backend && python -m pytest tests/test_github_provider.py tests/test_sync_service.py -v`
-Expected: PASS（5 passed）。
+Expected: PASS（6 passed）。
 
 - [ ] **Step 5: Commit**
 
@@ -1146,7 +1147,7 @@ git commit -m "task4: add GitProvider abstraction, GitHub adapter, idempotent sy
 
 ### Task 5: 工时估算与统计模块
 
-**目标**：实现 SPEC §3 M3 的估算口径（活跃段聚类 90 分钟 / 边界修正 30 分钟 / 段封顶 6h / 代码量系数 / 日封顶 12h / 周末 ×0.5）与聚合服务（WorkdayAggregate 日聚合 + IterationMetricSnapshot 迭代快照），全部确定性、可单测、口径参数可配。
+**目标**：实现 SPEC §3 M3 的估算口径（活跃段聚类 90 分钟 / 边界修正 30 分钟 / 段封顶 6h / 代码量系数 / 日封顶 12h / 周末 ×0.5）与聚合服务（WorkdayAggregate 日聚合 + IterationMetricSnapshot 迭代快照），全部确定性、可单测、口径参数可配；人工校正语义（SPEC §3.3 步骤 5）：`is_corrected=1` 时 `recompute_hours` 不覆盖已校正行，日聚合/迭代快照以 `corrected_hours` 为准（对应 SPEC §9 M3 验收"人工校正覆盖生效；口径参数可配置"，冷启动验证修订）。
 
 **依赖**：T1、T2。**可并行**：与 T4、T6~T8 并行。
 
@@ -1158,7 +1159,7 @@ git commit -m "task4: add GitProvider abstraction, GitHub adapter, idempotent sy
 
 **Interfaces:**
 - Consumes: `models.Commit`、`models.HoursEstimate`、`models.WorkdayAggregate`、`models.IterationMetricSnapshot`、`settings`（口径常量）
-- Produces: `estimate_day(commits: list[models.Commit]) -> float`、`recompute_hours(db)`（重算全部 HoursEstimate）、`recompute_aggregates(db)`（日聚合 + 迭代快照）、`parse_github_time` 复用
+- Produces: `estimate_day(commits: list[models.Commit]) -> float`、`recompute_hours(db)`（重算全部 HoursEstimate，跳过 `is_corrected=1` 行）、`recompute_aggregates(db)`（日聚合 + 迭代快照，校正值优先）
 
 - [ ] **Step 1: 写失败测试**
 
@@ -1193,24 +1194,24 @@ def test_two_segments_summed():
 
 
 def test_segment_cap_applies():
-    # 09:00 到 20:00 不间断 → 原始 11h + 0.5h = 11.5h，封顶 6h
-    commits = [commit_at(9, 0), commit_at(20, 0)]
+    # 09:00~16:30 每 90 分钟一个 commit → 同一活跃段：段长 7.5h + 0.5h = 8.0h，封顶 6h
+    commits = [commit_at(9, 0), commit_at(10, 30), commit_at(12, 0),
+               commit_at(13, 30), commit_at(15, 0), commit_at(16, 30)]
     assert estimate_day(commits) == 6.0
 
 
 def test_volume_coefficient():
-    # 09:00-09:30 (1.0h)，当日 add+del = 2000 行 → 系数 1.0+1.0=2.0 → 2.0h
+    # 09:00-09:30 (1.0h)，当日 add+del = 2000 行 → 系数 1.0 + clamp(2000/2000, -0.2, +0.5) = 1.5 → 1.5h
     c1, c2 = commit_at(9, 0), commit_at(9, 30)
     c1.add_lines, c2.add_lines = 1000, 1000
-    assert estimate_day([c1, c2]) == 2.0
+    assert estimate_day([c1, c2]) == 1.5
 
 
 def test_daily_cap():
-    # 大量提交：三段各 5h（封顶后 3×6=18）→ 日封顶 12h
-    commits = []
-    for h in (8, 13, 18):
-        commits.append(commit_at(h, 0))
-        commits.append(commit_at(h + 3, 0))
+    # 三段：08:00-12:30 (5.0h)、14:30-19:00 (5.0h)、21:00-22:30 (2.0h) → 合计 12.0h → 日封顶 12h
+    commits = [commit_at(8, 0), commit_at(9, 30), commit_at(11, 0), commit_at(12, 30),
+               commit_at(14, 30), commit_at(16, 0), commit_at(17, 30), commit_at(19, 0),
+               commit_at(21, 0), commit_at(22, 30)]
     assert estimate_day(commits) == 12.0
 
 
@@ -1221,6 +1222,42 @@ def test_weekend_factor():
     c2 = commit_at(9, 30)
     c2.committed_at = datetime(2026, 1, 10, 9, 30)
     assert estimate_day([c1, c2]) == 0.5
+
+
+def test_config_params_affect_estimate(monkeypatch):
+    # 口径参数可配（SPEC §9 M3 验收）：边界修正 30→60 分钟 → 段长 0.5h + 1.0h = 1.5h
+    from app.config import settings
+    monkeypatch.setattr(settings, "segment_boundary_minutes", 60)
+    commits = [commit_at(9, 0), commit_at(9, 30)]
+    assert estimate_day(commits) == 1.5
+
+
+def test_recompute_hours_preserves_correction(db_session):
+    # 人工校正（is_corrected=1）行不被重算覆盖（SPEC §3.3 步骤 5）
+    from datetime import date
+
+    from app.services.estimate_service import recompute_hours
+
+    proj = models.Project(name="P")
+    db_session.add(proj)
+    db_session.commit()
+    repo = models.Repository(project_id=proj.id, platform="github", repo_path="org/repo",
+                             token_encrypted="x", token_last4="abcd")
+    db_session.add(repo)
+    db_session.commit()
+    db_session.add_all([
+        models.Commit(repository_id=repo.id, sha="a1", author_name="A", author_email="a@x.com",
+                      committed_at=datetime(2026, 1, 5, 9, 0), add_lines=0, del_lines=0, files_changed=1),
+        models.Commit(repository_id=repo.id, sha="a2", author_name="A", author_email="a@x.com",
+                      committed_at=datetime(2026, 1, 5, 9, 30), add_lines=0, del_lines=0, files_changed=1),
+    ])
+    db_session.add(models.HoursEstimate(developer="a@x.com", date=date(2026, 1, 5), estimated_hours=7.0,
+                                        is_corrected=True, corrected_hours=9.5, correction_note="人工"))
+    db_session.commit()
+    recompute_hours(db_session)
+    row = db_session.query(models.HoursEstimate).filter_by(developer="a@x.com", date=date(2026, 1, 5)).first()
+    assert row.estimated_hours == 7.0  # 原始估算保留，不被重算（1.0h）覆盖
+    assert row.corrected_hours == 9.5
 ```
 
 创建 `backend/tests/test_aggregate_service.py`：
@@ -1266,6 +1303,19 @@ def test_recompute_aggregates(db_session):
     assert night.night_commit_ratio == 1.0
     snap = db_session.query(models.IterationMetricSnapshot).filter_by(iteration_id=it.id).all()
     assert {s.developer for s in snap} == {"a@x.com", "b@x.com"}
+
+
+def test_aggregate_uses_corrected_hours(db_session):
+    # 聚合以 corrected_hours 为准（is_corrected=1，SPEC §3.3 步骤 5 / §9 M3 验收）
+    repo, it = seed(db_session)
+    db_session.add(models.HoursEstimate(developer="a@x.com", date=date(2026, 1, 5), estimated_hours=1.0,
+                                        is_corrected=True, corrected_hours=9.5, correction_note="人工"))
+    db_session.commit()
+    recompute_aggregates(db_session)
+    day_agg = db_session.query(models.WorkdayAggregate).filter_by(developer="a@x.com").first()
+    assert day_agg.estimated_hours == 9.5
+    snap = db_session.query(models.IterationMetricSnapshot).filter_by(iteration_id=it.id, developer="a@x.com").first()
+    assert snap.estimated_hours == 9.5
 ```
 
 - [ ] **Step 2: 运行确认失败**
@@ -1398,7 +1448,7 @@ def recompute_aggregates(db) -> None:
 - [ ] **Step 4: 运行确认通过**
 
 Run: `cd backend && python -m pytest tests/test_estimate_service.py tests/test_aggregate_service.py -v`
-Expected: PASS（7 passed）。
+Expected: PASS（11 passed）。
 
 - [ ] **Step 5: Commit**
 
@@ -4337,7 +4387,7 @@ git commit -m "task20: add README with run/credential/distribution docs (subagen
 
 ### 执行注意事项（实现者必读）
 
-1. `test_auth.py` 中的 `test_login_then_access` 会命中 `/api/projects`（走全局引擎）——**请改用 conftest 的 `client` fixture**（内存库注入），避免测试写真实 `devhours.db`。
+1. `test_auth.py` 中的 `test_login_then_access` 断言 `GET /api/projects == 404`（T3 阶段无该路由；未认证 401 / 已认证 404 区分验证中间件），使用 conftest 的 `client` fixture（内存库注入），避免写真实 `devhours.db`。
 2. 每个 task 完成后按课程要求做两阶段评审：先 SPEC 合规检查，再代码质量检查；Critical issue 修复后才进入下一 task。
 3. 每个 task 的 commit message 追加实际 subagent 标识与人工修改说明。
 
