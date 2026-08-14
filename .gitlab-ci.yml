@@ -10,8 +10,8 @@ unit-test:
   image: python:3.11-slim
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends nodejs npm make
-    - cd backend && pip install -r requirements.txt
-    - cd ../frontend && npm install --no-audit --no-fund
+    - cd backend && pip install -r requirements.txt && cd ..
+    - cd frontend && npm install --no-audit --no-fund && cd ..
   script:
     - make test
 
