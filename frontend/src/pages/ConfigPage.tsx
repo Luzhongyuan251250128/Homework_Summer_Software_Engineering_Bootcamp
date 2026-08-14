@@ -1,10 +1,31 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
+import FormField from "../components/FormField";
+import NavLayout from "../components/Layout/NavLayout";
+import PageHeader from "../components/PageHeader";
+import Table, { type Column } from "../components/Table";
 
 export interface Project { id: number; name: string; description: string; }
 export interface Repository { id: number; platform: string; repo_path: string; token_last4: string; last_synced_at: string | null; }
 export interface Iteration { id: number; name: string; start_date: string; end_date: string; }
+
+const REPO_COLUMNS: Column<Repository>[] = [
+  { key: "repo_path", header: "仓库", mono: true },
+  {
+    key: "token_last4",
+    header: "Token",
+    mono: true,
+    render: (r) => <span className="muted">••••{r.token_last4}</span>,
+  },
+];
+
+const ITERATION_COLUMNS: Column<Iteration>[] = [
+  { key: "name", header: "名称", render: (it) => <a href={`/iterations/${it.id}`}>{it.name}</a> },
+  { key: "start_date", header: "起", mono: true },
+  { key: "end_date", header: "止", mono: true },
+];
 
 export default function ConfigPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -77,86 +98,188 @@ export default function ConfigPage() {
     await load();
   }
 
-  if (projects.length === 0 && !error) {
-    return (
-      <div className="layout">
-        <div className="nav"><a href="/">← 返回总览</a></div>
-        <main style={{ padding: 24 }}>
-          <h1>配置</h1>
-          <form onSubmit={createProject} className="card" style={{ marginBottom: 16 }}>
-            <input aria-label="project-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="项目名称" />
-            <button type="submit" className="primary">创建项目</button>
-          </form>
-          <EmptyState title="还没有项目，先创建一个吧" />
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div className="layout">
-      <div className="nav">
-        <a href="/">总览</a>
-        <a href="/developers">个人统计</a>
-        <a href="/config" className="active">配置</a>
-      </div>
-      <main style={{ padding: 24 }}>
-        <h1>配置</h1>
-        {error && <p role="alert" style={{ color: "var(--danger)" }}>{error}</p>}
-        <form onSubmit={createProject} className="card" style={{ marginBottom: 16 }}>
-          <input aria-label="project-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="项目名称" />
-          <button type="submit" className="primary">创建项目</button>
-        </form>
-        <select value={selected ?? ""} onChange={(e) => setSelected(Number(e.target.value))} aria-label="select-project">
-          <option value="" disabled>选择项目</option>
-          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        {selected !== null && (
-          <>
-            <section className="card" style={{ marginTop: 16 }}>
-              <h2>仓库</h2>
-              <form onSubmit={addRepo} style={{ display: "grid", gap: 8, marginBottom: 8 }}>
-                <input value={repoPath} onChange={(e) => setRepoPath(e.target.value)} placeholder="仓库路径 org/repo" aria-label="repo-path" />
-                <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Git Token（隐藏输入）" aria-label="repo-token" />
-                <button type="submit" className="primary">添加仓库</button>
+    <NavLayout>
+      <PageHeader title="配置" description="管理项目、仓库与迭代定义" />
+
+      {error && (
+        <p role="alert" className="alert">
+          <span>{error}</span>
+        </p>
+      )}
+
+      {projects.length === 0 && !error ? (
+        <>
+          <section className="panel">
+            <div className="panel__header">
+              <h2 className="panel__title">新建项目</h2>
+              <span className="panel__meta">创建第一个项目以开始统计</span>
+            </div>
+            <div className="panel__body">
+              <form onSubmit={createProject} className="form-row">
+                <FormField label="项目名称" htmlFor="project-name-input">
+                  <input
+                    id="project-name-input"
+                    aria-label="project-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="例如：平台组"
+                  />
+                </FormField>
+                <Button type="submit" variant="primary">创建项目</Button>
               </form>
-              {repos[selected]?.length ? (
-                <table>
-                  <thead><tr><th>仓库</th><th>Token</th><th>操作</th></tr></thead>
-                  <tbody>
-                    {repos[selected].map((r) => (
-                      <tr key={r.id}>
-                        <td>{r.repo_path}</td>
-                        <td>••••{r.token_last4}</td>
-                        <td><button onClick={() => deleteRepo(r.id)}>删除</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <EmptyState title="还没有仓库" />}
-            </section>
-            <section className="card" style={{ marginTop: 16 }}>
-              <h2>迭代</h2>
-              <form onSubmit={addIteration} style={{ display: "grid", gap: 8, marginBottom: 8 }}>
-                <input value={iterationName} onChange={(e) => setIterationName(e.target.value)} placeholder="迭代名称" aria-label="iteration-name" />
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="start-date" />
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="end-date" />
-                <button type="submit" className="primary">创建迭代</button>
+            </div>
+          </section>
+          <div className="section">
+            <EmptyState
+              title="还没有项目，先创建一个吧"
+              description="创建项目后可添加 Git 仓库与迭代，开始统计团队研发工时。"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <section className="panel">
+            <div className="panel__header">
+              <h2 className="panel__title">新建项目</h2>
+              <span className="panel__meta">共 {projects.length} 个项目</span>
+            </div>
+            <div className="panel__body">
+              <form onSubmit={createProject} className="form-row">
+                <FormField label="项目名称" htmlFor="project-name-input">
+                  <input
+                    id="project-name-input"
+                    aria-label="project-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="例如：平台组"
+                  />
+                </FormField>
+                <Button type="submit" variant="primary">创建项目</Button>
               </form>
-              {iterations[selected]?.length ? (
-                <table>
-                  <thead><tr><th>名称</th><th>起</th><th>止</th></tr></thead>
-                  <tbody>
-                    {iterations[selected].map((it) => (
-                      <tr key={it.id}><td><a href={`/iterations/${it.id}`}>{it.name}</a></td><td>{it.start_date}</td><td>{it.end_date}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <EmptyState title="还没有迭代" />}
-            </section>
-          </>
-        )}
-      </main>
-    </div>
+            </div>
+          </section>
+
+          <section className="panel section">
+            <div className="panel__header">
+              <h2 className="panel__title">当前项目</h2>
+            </div>
+            <div className="panel__body" style={{ maxWidth: 480 }}>
+              <FormField label="选择项目" htmlFor="project-select">
+                <select
+                  id="project-select"
+                  className="select"
+                  value={selected ?? ""}
+                  onChange={(e) => setSelected(Number(e.target.value))}
+                  aria-label="select-project"
+                >
+                  <option value="" disabled>选择项目</option>
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </FormField>
+            </div>
+          </section>
+
+          {selected !== null && (
+            <div className="grid-2 section">
+              <section className="panel">
+                <div className="panel__header">
+                  <h2 className="panel__title">仓库</h2>
+                  <span className="panel__meta">{repos[selected]?.length ?? 0} 个</span>
+                </div>
+                <div className="panel__body">
+                  <form onSubmit={addRepo} className="form-row">
+                    <FormField label="仓库路径" htmlFor="repo-path-input">
+                      <input
+                        id="repo-path-input"
+                        aria-label="repo-path"
+                        value={repoPath}
+                        onChange={(e) => setRepoPath(e.target.value)}
+                        placeholder="org/repo"
+                      />
+                    </FormField>
+                    <FormField label="Git Token" htmlFor="repo-token-input">
+                      <input
+                        id="repo-token-input"
+                        type="password"
+                        aria-label="repo-token"
+                        value={token}
+                        onChange={(e) => setToken(e.target.value)}
+                        placeholder="隐藏输入"
+                      />
+                    </FormField>
+                    <Button type="submit" variant="primary">添加仓库</Button>
+                  </form>
+                  <div className="section">
+                    {repos[selected]?.length ? (
+                      <Table
+                        columns={REPO_COLUMNS}
+                        rows={repos[selected]}
+                        rowKey={(r) => r.id}
+                        renderRowAction={(r) => (
+                          <Button variant="danger" size="sm" onClick={() => deleteRepo(r.id)}>删除</Button>
+                        )}
+                      />
+                    ) : (
+                      <EmptyState title="还没有仓库" description="添加仓库后即可同步提交数据。" />
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section className="panel">
+                <div className="panel__header">
+                  <h2 className="panel__title">迭代</h2>
+                  <span className="panel__meta">{iterations[selected]?.length ?? 0} 个</span>
+                </div>
+                <div className="panel__body">
+                  <form onSubmit={addIteration} className="form-row">
+                    <FormField label="迭代名称" htmlFor="iteration-name-input">
+                      <input
+                        id="iteration-name-input"
+                        aria-label="iteration-name"
+                        value={iterationName}
+                        onChange={(e) => setIterationName(e.target.value)}
+                        placeholder="例如：Sprint 24"
+                      />
+                    </FormField>
+                    <FormField label="开始日期" htmlFor="start-date-input">
+                      <input
+                        id="start-date-input"
+                        type="date"
+                        aria-label="start-date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="结束日期" htmlFor="end-date-input">
+                      <input
+                        id="end-date-input"
+                        type="date"
+                        aria-label="end-date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                    </FormField>
+                    <Button type="submit" variant="primary">创建迭代</Button>
+                  </form>
+                  <div className="section">
+                    {iterations[selected]?.length ? (
+                      <Table
+                        columns={ITERATION_COLUMNS}
+                        rows={iterations[selected]}
+                        rowKey={(it) => it.id}
+                      />
+                    ) : (
+                      <EmptyState title="还没有迭代" description="创建迭代以生成进度与风险分析。" />
+                    )}
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+        </>
+      )}
+    </NavLayout>
   );
 }

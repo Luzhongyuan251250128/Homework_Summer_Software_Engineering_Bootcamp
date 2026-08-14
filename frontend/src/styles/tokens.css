@@ -1,27 +1,710 @@
+/* ==========================================================================
+   研发任务智能统计与工时分析平台 · 前端设计系统
+   --------------------------------------------------------------------------
+   体系名称：Graphite & Celadon（石墨 × 青瓷）
+   风格定位：数据密集型工程管理仪表盘 —— 冷调石墨中性色 + 单一青瓷绿强调色、
+             紧凑密度、表格化数字对齐、深色石墨侧边导航。
+   实现方式：纯 CSS 自定义属性（语义化令牌）+ 基础元素样式 + 组件类。
+             由 frontend-design / design-taste-frontend skill 指导实施。
+             暗色模式预留：全部组件只引用语义令牌，切换见文末「暗色预留」块。
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. 色彩 · 中性（Graphite 石墨）
+   -------------------------------------------------------------------------- */
 :root {
-  --bg: #f5f6f8;
-  --surface: #ffffff;
-  --border: #e2e5ea;
-  --text: #1a2233;
-  --text-secondary: #5c6675;
-  --accent: #2563eb;
-  --accent-soft: #eff4ff;
-  --danger: #dc2626;
-  --warning: #d97706;
-  --radius: 8px;
-  --shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+  --graphite-950: #0c111d;
+  --graphite-900: #111827;
+  --graphite-800: #1f2a3d;
+  --graphite-700: #334155;
+  --graphite-600: #475467;
+  --graphite-500: #667085;
+  --graphite-400: #98a2b3;
+  --graphite-300: #c8d0dc;
+  --graphite-200: #dce2ea;
+  --graphite-100: #eaedf2;
+  --graphite-50:  #f4f6f8;
+
+  /* 语义中性 */
+  --bg:             var(--graphite-50);
+  --surface:        #ffffff;
+  --surface-muted:  #f8fafc;
+  --border:         #e3e7ec;
+  --border-strong:  #c9d1da;
+  --text:           var(--graphite-900);
+  --text-secondary: var(--graphite-600);
+  --text-tertiary:  var(--graphite-500);
+  --text-disabled:  var(--graphite-400);
+  --text-inverse:   #f8fafc;
+  --text-on-accent: #ffffff;
+
+  /* ------------------------------------------------------------------------
+     2. 色彩 · 强调（Celadon 青瓷）与语义状态
+     ------------------------------------------------------------------------ */
+  --accent-900: #134e4a;
+  --accent-800: #115e59;
+  --accent-700: #0f766e;
+  --accent-600: #0d9488;
+  --accent-500: #14b8a6;
+  --accent-200: #99f6e4;
+  --accent-100: #ccfbf1;
+  --accent-50:  #f0fdfa;
+
+  --accent:          var(--accent-700);
+  --accent-hover:    var(--accent-800);
+  --accent-active:   var(--accent-900);
+  --accent-soft:     #e8f4f1;          /* 偏灰的青瓷淡底，用于选中/徽章底 */
+  --accent-soft-2:   var(--accent-50); /* 更浅的青瓷淡底 */
+  --accent-soft-border: #b7e0d9;
+  --accent-on-soft:  var(--accent-800);
+
+  /* 语义状态（对比度均满足 WCAG AA：正文 ≥ 4.5:1） */
+  --danger:         #d92d20;
+  --danger-hover:   #b42318;
+  --danger-soft:    #fef3f2;
+  --danger-border:  #f5c6c2;
+  --warning:        #b54708;
+  --warning-hover:  #93370d;
+  --warning-soft:   #fff8eb;
+  --warning-border: #f3d6a0;
+  --success:        #067647;
+  --success-hover:  #05603a;
+  --success-soft:   #ecfdf3;
+  --success-border: #a8e8c6;
+
+  /* ------------------------------------------------------------------------
+     3. 色彩 · 导航 / 图表
+     ------------------------------------------------------------------------ */
+  --nav-bg:          var(--graphite-950);
+  --nav-border:      rgba(255, 255, 255, 0.07);
+  --nav-text:        #c7d0dc;
+  --nav-text-muted:  #6e7c92;
+  --nav-active-bg:   rgba(15, 118, 110, 0.24);
+  --nav-active-text: #6ee7d8;
+
+  --chart-line:          var(--accent);
+  --chart-area-top:      rgba(15, 118, 110, 0.22);
+  --chart-area-bottom:   rgba(15, 118, 110, 0);
+  --chart-grid:          #e9edf2;
+  --chart-axis:          #c9d1da;
+  --chart-tooltip-bg:    var(--graphite-900);
+  --chart-tooltip-text:  #f8fafc;
+
+  /* ------------------------------------------------------------------------
+     4. 字体族与字阶
+     ------------------------------------------------------------------------ */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
+               "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono",
+               Consolas, "Liberation Mono", Menlo, monospace;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold: 600;
+  --fw-bold:    700;
+
+  --fs-hero:    30px;  /* 登录页主标题 */
+  --fs-page:    22px;  /* 页面 h1 */
+  --fs-section: 16px;  /* 区块 h2 */
+  --fs-body:    14px;  /* 正文默认 */
+  --fs-sm:      13px;  /* 密集正文 / 表格 */
+  --fs-xs:      12px;  /* 辅助 / 元信息 */
+  --fs-2xs:     11px;  /* 眉题 / 标签 */
+  --fs-stat:    28px;  /* 统计数字 */
+
+  --lh-tight: 1.25;
+  --lh-body:  1.6;
+  --lh-mono:  1.5;
+
+  /* ------------------------------------------------------------------------
+     5. 间距（4px 基准）
+     ------------------------------------------------------------------------ */
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ------------------------------------------------------------------------
+     6. 圆角（形状一致性规则：交互控件 8 · 面板卡片 12 · 徽章全圆 · 小标签 6）
+     ------------------------------------------------------------------------ */
+  --radius-xs:  4px;
+  --radius-sm:  6px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-pill: 999px;
+
+  /* ------------------------------------------------------------------------
+     7. 阴影（随背景色调，冷灰石墨）
+     ------------------------------------------------------------------------ */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 8px -2px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 12px 24px -6px rgba(15, 23, 42, 0.16), 0 4px 8px rgba(15, 23, 42, 0.06);
+
+  /* ------------------------------------------------------------------------
+     8. 焦点环 / 交互状态
+     ------------------------------------------------------------------------ */
+  --focus-ring:        0 0 0 3px rgba(15, 118, 110, 0.25);
+  --focus-ring-danger: 0 0 0 3px rgba(217, 45, 32, 0.22);
+
+  /* ------------------------------------------------------------------------
+     9. 密度与布局
+     ------------------------------------------------------------------------ */
+  --nav-width:            236px;
+  --nav-width-collapsed:  72px;
+  --content-max:          1180px;
+  --table-cell-pad-y:     10px;
+  --table-cell-pad-x:     14px;
+
+  /* ------------------------------------------------------------------------
+     10. 动效
+     ------------------------------------------------------------------------ */
+  --dur-fast:  120ms;
+  --dur-base:  200ms;
+  --dur-slow:  320ms;
+  --ease-out:  cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
-* { box-sizing: border-box; }
-body { margin: 0; font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
-.stat-value { font-size: 28px; font-weight: 600; }
-.stat-label { color: var(--text-secondary); font-size: 13px; }
-button { cursor: pointer; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 6px 14px; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-input, textarea { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 14px; width: 100%; }
-table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
-.layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
-.nav { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; }
-.nav a { display: block; padding: 8px 10px; color: var(--text); text-decoration: none; border-radius: 6px; }
-.nav a.active { background: var(--accent-soft); color: var(--accent); }
+
+/* ==========================================================================
+   基础元素样式
+   ========================================================================== */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root { min-height: 100dvh; }
+
+::selection { background: var(--accent-100); color: var(--accent-900); }
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+h1, h2, h3, h4, p { margin: 0; }
+h1, h2, h3, h4 { font-weight: var(--fw-semibold); color: var(--text); }
+h1 { font-size: var(--fs-page); line-height: var(--lh-tight); letter-spacing: -0.01em; }
+h2 { font-size: var(--fs-section); line-height: var(--lh-tight); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button { font-family: inherit; }
+
+/* 工具类：等宽数字 / 次要文字 */
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.text-secondary { color: var(--text-secondary); }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ==========================================================================
+   按钮
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 34px;
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
+}
+.btn--primary:hover { background: var(--accent-hover); }
+.btn--primary:active { background: var(--accent-active); }
+
+.btn--secondary {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-xs);
+}
+.btn--secondary:hover { background: var(--surface-muted); border-color: #aeb9c6; }
+
+.btn--danger {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+.btn--danger:hover { background: #fde8e6; border-color: #eda39d; color: var(--danger-hover); }
+
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+.btn--ghost:hover { background: var(--graphite-100); color: var(--text); }
+
+.btn--sm { height: 28px; padding: 0 var(--space-3); font-size: var(--fs-xs); border-radius: var(--radius-sm); }
+.btn--lg { height: 40px; padding: 0 var(--space-5); font-size: var(--fs-body); }
+.btn--block { width: 100%; }
+
+/* ==========================================================================
+   表单控件
+   ========================================================================== */
+.input,
+.select {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+textarea.input {
+  height: auto;
+  padding: 10px 12px;
+  line-height: var(--lh-body);
+  resize: vertical;
+}
+.input:hover, .select:hover { border-color: #aeb9c6; }
+.input:focus, .select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+.input::placeholder { color: var(--text-tertiary); }
+.input:disabled, .select:disabled {
+  background: var(--surface-muted);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+/* 表单字段组：标签在输入框上方（不依赖 placeholder 作标签） */
+.field { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.field__label { font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--text-secondary); }
+.field__hint { font-size: var(--fs-xs); color: var(--text-tertiary); }
+.field__error { font-size: var(--fs-xs); color: var(--danger); }
+
+/* ==========================================================================
+   面板 / 卡片
+   ========================================================================== */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.panel__title { font-size: var(--fs-section); font-weight: var(--fw-semibold); }
+.panel__meta { font-size: var(--fs-xs); color: var(--text-tertiary); }
+.panel__body { padding: var(--space-3) var(--space-5) var(--space-4); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  padding: var(--space-4) var(--space-5);
+}
+
+/* 表单行：字段组（flex:1）与按钮同行，窄屏自动换行 */
+.form-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; }
+.form-row .field { flex: 1 1 180px; min-width: 0; }
+.form-row .btn { flex: none; }
+
+/* ==========================================================================
+   页面头部
+   ========================================================================== */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.page-header__title { font-size: var(--fs-page); font-weight: var(--fw-semibold); letter-spacing: -0.01em; }
+.page-header__desc { margin-top: var(--space-1); font-size: var(--fs-sm); color: var(--text-secondary); }
+.page-header__actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* ==========================================================================
+   表格（数据密集型：紧凑行高 + 数字表格对齐）
+   ========================================================================== */
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.table th {
+  text-align: left;
+  padding: var(--space-2) var(--table-cell-pad-x);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-tertiary);
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--table-cell-pad-y) var(--table-cell-pad-x);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+.table tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:hover { background: var(--surface-muted); }
+.table th.num, .table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.table .mono { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.table .muted { color: var(--text-tertiary); }
+
+/* ==========================================================================
+   统计卡
+   ========================================================================== */
+.stat-card {
+  --stat-rail: var(--accent);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--stat-rail);
+}
+.stat-card:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+.stat-card--success { --stat-rail: var(--success); }
+.stat-card--warning { --stat-rail: var(--warning); }
+.stat-card--danger  { --stat-rail: var(--danger); }
+
+.stat-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+}
+.stat-value {
+  font-size: var(--fs-stat);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--text);
+}
+.stat-hint { font-size: var(--fs-xs); color: var(--text-tertiary); }
+
+/* ==========================================================================
+   徽章（Badge / RiskBadge）
+   ========================================================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.badge__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.badge--neutral { background: var(--graphite-100); color: var(--text-secondary); border-color: var(--border); }
+.badge--accent  { background: var(--accent-soft); color: var(--accent-on-soft); border-color: var(--accent-soft-border); }
+.badge--success { background: var(--success-soft); color: var(--success); border-color: var(--success-border); }
+.badge--warning { background: var(--warning-soft); color: var(--warning); border-color: var(--warning-border); }
+.badge--danger  { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-border); }
+
+/* ==========================================================================
+   空态
+   ========================================================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-1);
+  padding: var(--space-10) var(--space-6);
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+.empty-state__icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.empty-state__title { font-size: var(--fs-body); font-weight: var(--fw-medium); color: var(--text); }
+.empty-state__desc { max-width: 420px; font-size: var(--fs-sm); color: var(--text-tertiary); }
+.empty-state__action { margin-top: var(--space-3); }
+
+/* ==========================================================================
+   应用外壳 / 侧边导航
+   ========================================================================== */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+.app-nav {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--nav-bg);
+  color: var(--nav-text);
+}
+.app-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  color: var(--text-inverse);
+}
+.app-nav__brand-name { font-size: var(--fs-body); font-weight: var(--fw-semibold); line-height: 1.2; }
+.app-nav__brand-sub {
+  font-size: var(--fs-2xs);
+  color: var(--nav-text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.app-nav__links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+}
+.app-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--nav-text);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.app-nav__link:hover { background: rgba(255, 255, 255, 0.06); color: #ffffff; text-decoration: none; }
+.app-nav__link--active { background: var(--nav-active-bg); color: var(--nav-active-text); }
+.app-nav__link svg { flex: none; opacity: 0.85; }
+.app-nav__footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--nav-border);
+  font-size: var(--fs-2xs);
+  color: var(--nav-text-muted);
+  letter-spacing: 0.05em;
+}
+
+.app-content { min-width: 0; }
+.app-content__inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-8) var(--space-16);
+}
+
+/* ==========================================================================
+   统计网格 / 双栏布局
+   ========================================================================== */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.section { margin-top: var(--space-5); }
+
+/* ==========================================================================
+   趋势图容器
+   ========================================================================== */
+.trend-chart { position: relative; width: 100%; }
+.trend-chart__canvas { width: 100%; height: 260px; }
+.trend-chart__empty {
+  display: grid;
+  place-items: center;
+  height: 160px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}
+
+/* ==========================================================================
+   登录页
+   ========================================================================== */
+.login-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background:
+    radial-gradient(1100px 520px at 82% -8%, rgba(15, 118, 110, 0.10), transparent 62%),
+    radial-gradient(900px 480px at -10% 110%, rgba(15, 118, 110, 0.06), transparent 55%),
+    var(--bg);
+}
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+.login-card__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.login-card__title { font-size: var(--fs-hero); font-weight: var(--fw-bold); letter-spacing: -0.02em; }
+.login-card__sub { font-size: var(--fs-sm); color: var(--text-secondary); margin: var(--space-2) 0 var(--space-6); }
+
+/* ==========================================================================
+   错误提示（role=alert）
+   ========================================================================== */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 10px 14px;
+  margin-bottom: var(--space-4);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
+
+/* ==========================================================================
+   响应式（导航收窄为图标栏、统计网格降列）
+   ========================================================================== */
+@media (max-width: 960px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 860px) {
+  .app-shell { grid-template-columns: var(--nav-width-collapsed) minmax(0, 1fr); }
+  .app-nav__brand-name, .app-nav__brand-sub, .app-nav__link-label, .app-nav__footer { display: none; }
+  .app-nav__brand { justify-content: center; padding: var(--space-4) 0; }
+  .app-nav__link { justify-content: center; padding: 11px 0; }
+  .app-content__inner { padding: var(--space-5) var(--space-4) var(--space-12); }
+}
+@media (max-width: 760px) {
+  .stat-grid { grid-template-columns: 1fr; }
+}
+
+/* ==========================================================================
+   动效偏好
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==========================================================================
+   暗色模式（预留，未启用）
+   --------------------------------------------------------------------------
+   体系全部为语义令牌，切换暗色只需替换下列令牌，组件零改动：
+   @media (prefers-color-scheme: dark) {
+     :root {
+       --bg: #0c111d;
+       --surface: #131a28;
+       --surface-muted: #182132;
+       --border: #232f44;
+       --border-strong: #33405a;
+       --text: #e6ebf2;
+       --text-secondary: #aab6c8;
+       --text-tertiary: #8b98ad;
+       --accent: #2dd4bf;
+       --accent-hover: #5eead4;
+       --accent-soft: rgba(45, 212, 191, 0.12);
+       --accent-soft-border: rgba(45, 212, 191, 0.3);
+       --danger-soft: rgba(217, 45, 32, 0.12);
+       --warning-soft: rgba(181, 71, 8, 0.14);
+       --success-soft: rgba(6, 118, 71, 0.16);
+       --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
+       --shadow-md: 0 4px 10px -2px rgba(0, 0, 0, 0.5);
+       --shadow-lg: 0 14px 28px -6px rgba(0, 0, 0, 0.6);
+       --nav-bg: #0a0f1a;
+       --chart-grid: #232f44;
+       --chart-axis: #33405a;
+     }
+   }
+   ========================================================================== */

@@ -162,7 +162,7 @@ RS-5 迭代末期集中：迭代后 1/3 时间窗提交数占比 ≥ 60%
 
 - **输入**：统计指标快照、同步状态、报告列表。
 - **行为**：团队总览（总工时/提交数/活跃成员/趋势图）；个人维度表；迭代进度与风险标记；同步状态卡；报告入口。
-- **输出**：ECharts 图表 + 表格 + 统计卡片（Open Design 风格）。
+- **输出**：ECharts 图表 + 表格 + 统计卡片（自研设计系统「Graphite & Celadon」，见 §8）。
 - **边界条件**：无数据 → 空态引导（去配置/去同步）；有数据 → 正常渲染。
 - **错误处理**：接口失败 → 加载错误提示 + 重试按钮。
 
@@ -217,7 +217,7 @@ RS-5 迭代末期集中：迭代后 1/3 时间窗提交数占比 ≥ 60%
 ┌──────────────────┐  HTTPS   ┌──────────────────────────────────────┐
 │  前端 (浏览器)     │ ───────▶ │  FastAPI 后端 (Python)                │
 │  React + Vite    │ ◀─────── │  ├─ REST API 层  /api/*               │
-│  Open Design     │          │  ├─ 认证中间件（管理口令 + 会话）        │
+│  自研设计令牌/组件  │          │  ├─ 认证中间件（管理口令 + 会话）        │
 │  ECharts         │          │  ├─ Git 采集服务（GitProvider 接口）    │
 └──────────────────┘          │  ├─ 工时估算引擎（口径见 §3.3 M3）       │
                               │  ├─ 统计聚合服务（人/周/迭代维度）        │
@@ -367,7 +367,7 @@ CredentialMeta
 | 层 | 选型 | 理由 |
 |---|---|---|
 | 前端框架 | React 18 + Vite + TypeScript | 组件化成熟、生态丰富；Vite 构建快 |
-| 设计系统 | **Open Design**（nexu-io/open-design） | 课程推荐路线；数据密集型仪表盘（统计卡/表格/图表/报告编辑）统一视觉语言；搭配 `frontend-design` / `design-taste-frontend` skill 实施 |
+| 设计系统 | **自研设计令牌 + 组件体系**（`tokens.css` 语义令牌 + `components/` 共享组件，无第三方 UI 框架依赖） | 课程推荐路线为 Open Design；本实现**实际采用自研体系**（纠偏，见下方说明）：数据密集型仪表盘需要紧凑密度、表格数字对齐、统一语义色与风险等级可视化，自研令牌零外部耦合、完全可控，且不引入额外依赖；由 `frontend-design` / `design-taste-frontend` skill 指导实施 |
 | 图表 | ECharts | 数据平台主流图表库，时间序列/趋势/柱状图开箱即用 |
 | 后端 | Python 3.11 + FastAPI + SQLAlchemy | 数据加工/统计在 Python 侧最顺手；FastAPI 异步 + 自动 OpenAPI 文档 |
 | 数据库 | SQLite（WAL） | 单文件零运维；可平滑升 Postgres（SQLAlchemy 抽象） |
@@ -378,7 +378,7 @@ CredentialMeta
 | 部署 | Fly.io（主）/ Render（备） | 免费额度、无需备案、可提供公网 URL |
 | CI | GitLab CI（`.gitlab-ci.yml`） | 课程交付清单要求，含 `unit-test` job |
 
-**前端 skill 说明**：界面开发采用 Open Design 设计系统，实施时使用 `frontend-design` 与 `design-taste-frontend` skill 保证界面质量（数据密集仪表盘风格：紧凑统计卡、清晰表格层级、趋势图表）。
+**前端 skill 说明（如实纠偏）**：界面开发**实际采用自研设计系统**（体系名「Graphite & Celadon」：语义化 CSS 令牌 `frontend/src/styles/tokens.css` + 共享组件库 `frontend/src/components/`，含 NavLayout / Button / PageHeader / Badge / RiskBadge / FormField / Table / StatCard / EmptyState / TrendChart），不依赖 Open Design 或任何第三方 UI 框架；实施时使用 `frontend-design` 与 `design-taste-frontend` skill 保证界面质量（数据密集仪表盘风格：紧凑统计卡、清晰表格层级、趋势图表、风险信号徽章）。课程推荐路线（Open Design）保留为可选升级方向，本仓库未实际采用。
 
 ---
 
