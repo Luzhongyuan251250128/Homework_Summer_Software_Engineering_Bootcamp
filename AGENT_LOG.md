@@ -28,7 +28,19 @@
 
 
 
+## 2026-08-14 · Phase 2：冷启动验证启动（opencode，隔离 worktree `作业-coldstart` @ `666b03c`）
+
+- **Task 编号**：冷启动验证（课程 §4.5，非实现 task）
+- **触发的技能**：无（第二 agent 仅凭 SPEC+PLAN 自主推进；主侧由 brainstorming/writing-plans 产物支撑）
+- **关键配置**：独立 worktree（仅 `.gitignore`+`SPEC.md`+`PLAN.md`）；全新 session；指定实现 T5（工时估算），时间允许续 T4；规则"遇到不确定必须暂停提问，禁止猜测"
+- **agent 提问与处理**（3 个问题，用户+主 agent 共同应答）：
+  1. **依赖问题**：worktree 零代码，T5 依赖 T1/T2 → 答复按方案 1：顺序实现 T1→T2→T5→T4，各 task 独立 commit；T1 的 make test 前端部分按 PLAN 说明跳过
+  2. **PLAN 缺陷（重要）**：T5 三个测试（`test_segment_cap_applies` / `test_volume_coefficient` / `test_daily_cap`）与 SPEC §3.3 口径及实现矛盾——**agent 分析正确**：① 09:00/20:00 间隔 11h>90min 不会同段，测不到段封顶；② 代码量系数被 clamp 封顶 +0.5（coef≤1.5），测试却期望 2.0；③ 三段各 3.5h 共 10.5h 够不到 12h 日封顶。处理：按 SPEC 修正测试（实现不动），缺陷待测试结束后回填 PLAN 并记入 SPEC_PROCESS.md（修订 diff）
+  3. **环境问题**：opencode 只读 plan 模式 / `python` 是 WindowsApps 假桩 / detached HEAD → 批准执行、建分支 `coldstart-task5`、用 `py -m pytest`；预案：bcrypt==4.2.1 若无 cp313 轮子可在 worktree 内临时升 `bcrypt>=4.3.0` 并记录
+- **人工干预**：用户纠正过本文件时间戳为真实时间；删除 push 网络问题条目
+- **学到的教训**：① 写 PLAN 测试时"注释里的期望值"必须按口径公式手算一遍（clamp 上限、段间隔拆分、封顶够不够）——三个缺陷全是手算错误；② 冷启动 agent 是 PLAN 质量的客观审计者，其提问清单直接等于修订清单
+
 ## 后续维护占位（实现阶段逐 task 追加）
 
-- [ ] 冷启动验证（opencode，独立 worktree）：记录 agent 暂停提问清单、spec 缺陷、修订 diff
+- [ ] 冷启动验证完成：记录 agent 最终报告、PLAN 修订 diff（T5 测试缺陷回填）
 - [ ] T1~T20 每个 task：完成后追加一条（subagent 标识 / commit hash / 评审发现 / 人工修改）
