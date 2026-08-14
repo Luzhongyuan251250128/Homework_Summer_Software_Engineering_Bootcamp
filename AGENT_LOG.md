@@ -40,7 +40,18 @@
 - **人工干预**：用户纠正过本文件时间戳为真实时间；删除 push 网络问题条目
 - **学到的教训**：① 写 PLAN 测试时"注释里的期望值"必须按口径公式手算一遍（clamp 上限、段间隔拆分、封顶够不够）——三个缺陷全是手算错误；② 冷启动 agent 是 PLAN 质量的客观审计者，其提问清单直接等于修订清单
 
+## 2026-08-14 · Phase 2 完成：冷启动验证结果（opencode，worktree `作业-coldstart`）
+
+- **Task 编号**：冷启动验证（课程 §4.5）
+- **执行结果**：opencode 全新 session 完成 **T1→T2→T3→T5→T4** 全链 TDD，**27 passed**（主侧复验确认）；分支 `coldstart-task5`，commits `3bd48d8`/`bd822c1`/`3666001`/`5e086b3`/`f07d59f`/`0221567`/`c553335`
+- **暂停提问 6 次**（详见 `SPEC_PROCESS.md` §4.2）：依赖链、T5 测试缺陷、环境/plan mode、.gitignore 语义、T4 缺 T3、T3 断言不可达
+- **暴露 PLAN 缺陷 4 类**（`SPEC_PROCESS.md` §4.3）：① T5 三测试期望值与 SPEC §3.3/实现矛盾；② T3 `test_login_then_access` 断言 200 不可达（改 404 + 临时 login stub，T9 删除）；③ 测试计数错误（T3/T4/T5 三处）；④ M3 人工校正覆盖缺口（`is_corrected` 无 task 落地 → 补 3 测试，`f07d59f`）
+- **规格层判定**：SPEC 口径与实现一致、无需修订；0 次 agent 读错，全部为文档缺陷
+- **环境发现**（影响主仓库实现）：pypi 直连不可用→阿里云镜像；`python` 坏 stub→`py`；本机无 make；Python 3.13 下 `datetime.utcnow()` 26 条 DeprecationWarning（技术债）
+- **人工干预**：用户与主 agent 共同答复 6 次提问；用户修正过本文件时间戳（1:00 / 3:30）并删除 push 网络问题条目
+- **学到的教训**：冷启动 agent 的每次暂停都是修订清单；PLAN 自查必须"重算每个断言"而非只查结构（T5 三缺陷全是手算错误）；事实性字段（时间等）不得自行编造
+
 ## 后续维护占位（实现阶段逐 task 追加）
 
-- [ ] 冷启动验证完成：记录 agent 最终报告、PLAN 修订 diff（T5 测试缺陷回填）
 - [ ] T1~T20 每个 task：完成后追加一条（subagent 标识 / commit hash / 评审发现 / 人工修改）
+- [ ] 冷启动 PLAN 修订回填主仓库后：记录移植 commit hash
