@@ -106,4 +106,37 @@ describe("ReportListPage", () => {
     expect(alert).toHaveTextContent("LLM_API_KEY 未配置：请先在配置页设置 API Key");
     expect(alert.className).toContain("alert");
   });
+
+  it("切换项目选择器后按新的 project_id 重新请求报告列表", async () => {
+    const twoProjects = [
+      { id: 1, name: "平台组", description: "" },
+      { id: 2, name: "数据组", description: "" },
+    ];
+    const reportsP1 = [
+      { id: 11, type: "weekly", scope: "project", status: "draft", created_at: "2026-08-14T00:00:00" },
+    ];
+    const reportsP2 = [
+      { id: 21, type: "risk", scope: "project", status: "final", created_at: "2026-08-20T00:00:00" },
+    ];
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(ok(twoProjects))
+      .mockResolvedValueOnce(ok(reportsP1))
+      .mockResolvedValueOnce(ok(reportsP2));
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <MemoryRouter initialEntries={["/reports"]}>
+        <Routes>
+          <Route path="/reports" element={<ReportListPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    // 默认选中第一个项目
+    expect(await screen.findByText("2026-08-14T00:00:00")).toBeInTheDocument();
+    // 切换到第二个项目 → 重新请求 /api/reports?project_id=2
+    await userEvent.selectOptions(await screen.findByLabelText("select-project-report"), "2");
+    expect(await screen.findByText("2026-08-20T00:00:00")).toBeInTheDocument();
+    expect(screen.queryByText("2026-08-14T00:00:00")).not.toBeInTheDocument();
+    const switchCall = fetchMock.mock.calls.find(([input]) => String(input) === "/api/reports?project_id=2");
+    expect(switchCall).toBeDefined();
+  });
 });
