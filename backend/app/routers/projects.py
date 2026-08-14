@@ -42,6 +42,12 @@ def delete_project(project_id: int, confirm: bool = False, db: Session = Depends
     return {"ok": True}
 
 
+@router.get("/projects/{project_id}/repositories", response_model=list[RepositoryOut])
+def list_repositories(project_id: int, db: Session = Depends(get_db)):
+    _get_project(db, project_id)
+    return db.query(models.Repository).filter_by(project_id=project_id).all()
+
+
 @router.post("/projects/{project_id}/repositories", response_model=RepositoryOut)
 def create_repository(project_id: int, body: RepositoryCreate, db: Session = Depends(get_db)):
     _get_project(db, project_id)
