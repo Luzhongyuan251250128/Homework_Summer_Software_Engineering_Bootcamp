@@ -171,6 +171,22 @@
 
 ## 6. 待办
 
-- [ ] 将冷启动已验证的 PLAN 修订（§4.3 四类缺陷的 diff）回填主仓库 `PLAN.md`（coldstart worktree commit `c553335` 已含修订版，可直接移植）
-- [ ] T6~T20 实现时核对各 task 的测试计数注释
-- [ ] T9 实现真实 login 路由后删除 T3 临时 stub
+- [x] 将冷启动已验证的 PLAN 修订（§4.3 四类缺陷的 diff）回填主仓库 `PLAN.md`（commit `f6a6ce1`）
+- [x] 实现阶段全部 task（T1~T20）完成并合入 main，最终回归 **63 passed**
+- [x] 实现阶段新增 PLAN 缺陷（#5~#11）记录进 `PLAN.md` 附录 A（commit 见 `PLAN.md` 附录）
+- [ ] 用户本机/CI 验证：前端 vitest、docker 冷启动、GitLab CI pipeline、Fly.io 部署 URL
+- [ ] 主密钥引导 `app.cli_setup` 已在实现中补上（`aedad3d`）——README 与 `security.py` 错误提示已一致
+
+---
+
+## 附录：实现阶段复盘（2026-08-14，subagent 驱动 20 task）
+
+**流程执行**：每 task 一个新鲜 subagent（独立 worktree `作业/.worktrees/taskN` + 分支 `task/taskN`），严格 TDD 红→绿→commit，父侧两阶段评审（spec 合规→代码质量）后 `--no-ff` 合入 main；subagent 标识与人工修改全部记入 commit message 与 AGENT_LOG。
+
+**subagent 模式的价值（数据）**：实现阶段 subagent 自主抓出 **7 个新的 PLAN 缺陷**（#5~#11，见 PLAN 附录 A.2），全部是"测试期望值与实现/SPEC 不符"或"wave 并行标注与实际 import 依赖矛盾"两类——与我 brainstorm/writing-plans 阶段自查漏掉的 4 个（#1~#4）合计 11 个。**冷启动验证的结论（PLAN 测试层是主要短板）被实现阶段再次证实**。
+
+**方法论反思（追加）**：
+1. "可并行"标注必须核对到 import 级依赖（T11↔T10、T14↔T13 各踩一次，均因顶部 import 崩）；
+2. 测试 mock 是 PLAN 缺陷高发区（T5×3、T13、T17）：写测试时必须"按实现的实际调用序列/签名逐值核对"，仅核对结构不够；
+3. 环境约束（前端 vitest 沙箱不可运行）应提前探测并在 PLAN/AGENT_LOG 统一降级，而非每个 task 各自踩；
+4. 分支管理纪律：父侧合入后的分支不应再接收新指令（T12 subagent 重写历史事件，无损害但值得记录）。

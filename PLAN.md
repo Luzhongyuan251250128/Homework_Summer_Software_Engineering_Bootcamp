@@ -4391,3 +4391,37 @@ git commit -m "task20: add README with run/credential/distribution docs (subagen
 2. 每个 task 完成后按课程要求做两阶段评审：先 SPEC 合规检查，再代码质量检查；Critical issue 修复后才进入下一 task。
 3. 每个 task 的 commit message 追加实际 subagent 标识与人工修改说明。
 
+---
+
+## 附录 A：实现阶段修订记录（2026-08-14，subagent 执行中发现并修复）
+
+> 以下缺陷在执行中被 subagent 按"遇到不确定必须暂停"纪律发现，经父侧确认后以"测试是权威 / 实现符合 SPEC 不动"原则修复。**实现代码全部符合 SPEC 口径；缺陷集中于本计划的测试期望值与依赖标注。** 详细 diff 与判定见 `SPEC_PROCESS.md`。
+
+### A.1 冷启动阶段已修订（PLAN 修订移植 commit `f6a6ce1`）
+
+| # | 位置 | 缺陷 | 修复 |
+|---|---|---|---|
+| 1 | T5 三测试 | 期望值与 SPEC §3.3 口径矛盾（段封顶 09:00/20:00 间隔 11h 会被聚类拆分；系数 clamp 上限 +0.5 未计入；日封顶数据够不到 12h） | 按口径修正测试（09:00~16:30 连续段 / 期望 1.5 / 三段 5h+5h+2h） |
+| 2 | T3 `test_login_then_access` | 断言 `/api/projects == 200` 不可达（路由属 T9） | 断言 404 + 临时 login stub（T9 删 stub），`create_app` 先设 `app.state.session_secret` |
+| 3 | 计数 T3/T4/T5 | 5/5/7 passed 计数错误 | 6/6/11 |
+| 4 | T5 校正覆盖缺口 | `is_corrected` 无 task 落地（SPEC §9 M3 验收） | `recompute_hours` 跳过已校正行、聚合以校正值为准，+3 测试 |
+
+### A.2 实现阶段新增（subagent 执行中发现）
+
+| # | 位置 | 缺陷 | 修复 |
+|---|---|---|---|
+| 5 | T6 `test_rs1` | `end=start`（迭代 1 天）致 RS-1"最近 7 天"窗口被旧基线主导，永不触发 | `end=start+timedelta(days=4)`（实现符合 SPEC 不动） |
+| 6 | T9 计数 | 计划写 9 passed，自带测试代码实为 7+3=10 | 按代码原样，计数改 10 |
+| 7 | T11 隐藏依赖 | 计划称"与 T10 并行"，实际顶部 `from .stats import iteration_stats` 依赖 T10 | 调度改串行依赖（T7/T10 先合入 task11 分支，`7ef7160`/`415d629`），依赖说明修正 |
+| 8 | T14 隐藏依赖 | DashboardPage 顶部 `import EmptyState` 依赖 T13 产物 | T14 按方案 A 先行创建 EmptyState.tsx（PLAN T13 原文，合入零冲突） |
+| 9 | T13 测试 mock | 用例 2 仅 2 个 mock，ConfigPage 实际 5 次 fetch（对象不可迭代 → TypeError） | mock 改 5 值正确序列（含 ok:true） |
+| 10 | T17 fake 签名 | `fake_add_job(fn, trigger, hours=None)` 绑到类后调用含隐式 self，位置/关键字参数冲突 | 改 `fake_add_job(self, fn, trigger, hours=None, args=None)`（实现不动） |
+| 11 | T12 vite.config 类型 | vitest 2.1.x 类型基于内置 vite 5，与根 vite 6 的 plugin-react 类型冲突（TS2769，影响 `npm run build`） | `plugins: [react() as never]` + 注释（运行时无影响） |
+
+### A.3 执行环境约束记录
+
+- **前端 vitest 沙箱不可运行**：沙箱禁止管道 stdio 子进程 spawn（esbuild 硬编码管道；原生与 esbuild-wasm 均触发 EPERM）。前端 T12~T16 采用"代码照写 + `npx tsc --noEmit` 静态校验 + 红/绿由用户本机或 CI 执行"流程；`make test` 前端部分同样依赖用户/CI 环境。
+- **pypi/npm 直连不可用**：pip 用阿里云镜像；npm 用 npmmirror + `--cache <工作区内目录>` + `--ignore-scripts`。
+- **`python` 为坏 stub**：一律 `py`（Python 3.13.5）。
+- **主密钥引导**：`app/cli_setup.py`（父侧补充，SPEC §7.2）——`python -m app.cli_setup` 隐藏输入 + keyring 持久化。
+

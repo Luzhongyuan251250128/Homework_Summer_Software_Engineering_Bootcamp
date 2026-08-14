@@ -89,7 +89,22 @@
 - **人工干预**：T11 依赖解阻（task7→task11、main→task11 两次 merge，`7ef7160`/`415d629`）
 - **学到的教训**：① 派发并行 subagent 前必须核对 PLAN 依赖链的**隐藏** import 依赖（T11↔T10），仅看"可并行"标注不够；② 每个 task 完成后立即在 main 跑全量回归（T11 前 57 passed 基线）确认无回归；③ sync 测试含真实网络超时（~60s），CI 需注意超时预算
 
-## 后续维护占位（实现阶段逐 task 追加）
+## 2026-08-14（时间待用户补充）· 实现完成（Wave 6~8：T12~T20 + 收尾）
 
-- [ ] T12~T20 每个 task：完成后追加一条（subagent 标识 / commit hash / 评审发现 / 人工修改）
-- [ ] 收尾回填 PLAN：缺陷 6/7/8（T9 计数、T11 依赖说明、T6 test_rs1）+ 前批缺陷核对
+- **触发的技能**：`subagent-driven-development` + `test-driven-development`（Wave 6 前端 5 页、Wave 7 定时、Wave 8 运维）
+- **task 完成表**（subagent / commit / merge）：
+  - T12 前端地基 t12-ds4flash `61e6c68`→merge `89789af`（+父侧 vite.config 修复 `3b69a16`、tsbuildinfo 清理 `14184c3`）
+  - T13 配置页 t13-ds4flash `91c7c7b`→`b9318f7`；T14 总览页 t14-ds4flash `ccb38ed`→`cc2e9bd`；T15 个人/迭代 task15-dev-dim `f9cf93e`→`46ee3c5`；T16 报告编辑 task16-ds4flash `3e4befb`→`e8efaf8`
+  - T17 定时同步 task17-apscheduler `69b6ef1`→`922fd2d`；T18 Docker task18-docker `e2cefea`→`3d4b716`；T19 CI task19-ci `a58076a`→`7a21bbe`；T20 README task20-ds4flash `632ab53`→`a41674b`
+  - 父侧补充：`app/cli_setup.py` 主密钥引导（SPEC §7.2 缺口，T20 发现）`aedad3d`
+- **最终回归**：backend **63 passed**（57→60→63，含 cli_setup 3 测试）；前端 vitest 待用户本机/CI（沙箱 spawn 限制，已记 PLAN 附录 A.3）
+- **subagent 自主抓出的 PLAN 缺陷（#5~#11，详见 PLAN 附录 A.2）**：T6 test_rs1 窗口、T9 计数、T11/T14 隐藏依赖、T13 mock 序列、T17 fake 签名、T12 vite 双版本类型冲突
+- **人工干预**：① 前端 vitest 沙箱不可运行 → 降级"tsc 静态校验 + 用户/CI 验证"（决策 + 文档）；② T11/T15 依赖解阻 merge；③ T14 EmptyState 跨 task 豁免批准；④ T12 subagent 在父侧合并后重写分支历史（reset+重提交 `df8bbf5`）——无损害（main 已含旧历史），但教训：**分支合入后不再向其派发新指令，或先确认分支状态**；⑤ 沙箱锁定 pytest 垃圾目录清理（danger-full-access）；⑥ cli_setup 补实现
+- **学到的教训**：① 并行派发前必须核对跨 task **import 级**隐藏依赖（T11↔T10、T14↔T13 两次踩坑）；② 测试 mock 必须与实现的实际 fetch 序列一一对应（T13）；③ monkeypatch 类的函数必须考虑 bound-method self（T17）；④ 环境限制（前端 vitest）尽早识别并统一降级方案，避免每个 task 各自摸索
+
+## 后续维护占位（收尾阶段）
+
+- [ ] 用户本机验证：`cd frontend && npm install && npx vitest run`（期望 5 测试全绿）
+- [ ] 用户验证：`docker build -t dev-hours .` + `docker run` 冷启动 + Fly.io 部署
+- [ ] 用户 push + GitLab CI pipeline（unit-test job pass）
+- [ ] 时间戳补录（用户提供真实时间）
