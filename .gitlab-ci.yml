@@ -1,0 +1,28 @@
+stages:
+  - test
+  - build
+
+variables:
+  IMAGE_NAME: $CI_REGISTRY_IMAGE:latest
+
+unit-test:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends nodejs npm make
+    - cd backend && pip install -r requirements.txt
+    - cd ../frontend && npm install --no-audit --no-fund
+  script:
+    - make test
+
+build-image:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  script:
+    - docker build -t $IMAGE_NAME .
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker push $IMAGE_NAME
+  only:
+    - main
