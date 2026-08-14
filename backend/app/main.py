@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .auth import AuthMiddleware
 from .db import engine, get_db, init_db
+from .logging_config import setup_logging
 from .routers import auth as auth_router
 from .routers import projects as projects_router
 from .routers import reports as reports_router
@@ -16,6 +17,8 @@ from .routers import sync as sync_router
 
 def create_app(secret: str | None = None, db: Callable | None = None) -> FastAPI:
     from .config import settings
+
+    setup_logging()
 
     if db is None:
         @asynccontextmanager
@@ -45,3 +48,6 @@ def create_app(secret: str | None = None, db: Callable | None = None) -> FastAPI
     if dist.exists():
         app.mount("/", StaticFiles(directory=dist, html=True), name="static")
     return app
+
+
+app = create_app()
