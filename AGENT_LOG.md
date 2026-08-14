@@ -59,7 +59,19 @@
 - **人工干预**：无（用户批准移植）
 - **学到的教训**：跨 worktree 的文档修订用 `git checkout <commit> -- <path>` 从共享对象库直接移植，先 diff 核对范围再提交
 
+## 2026-08-14（时间待用户补充）· Task 1 项目脚手架（Wave 1）
+
+- **触发的技能**：`subagent-driven-development` + `test-driven-development`
+- **关键 prompt / context 配置**：worktree `.worktrees/task1`（分支 `task/t1`）；TDD 红-绿-commit；环境适配（`py` 替代 `python`、阿里云 PyPI 镜像、pytest 加 `-p no:cacheprovider`、无 make 用等价命令）
+- **subagent 输出**：commit `e128d95`（t1-ds4flash）——10 文件、91 行，与 PLAN 逐字一致；红（`ModuleNotFoundError: No module named 'app'`）→ 绿（1 passed）→ uvicorn 冒烟 `/api/health` 200
+- **两阶段评审**：spec 合规 ✅（文件与 PLAN 一致、测试复验绿）；代码质量 ✅ 无 Critical（备注：`admin_password` 占位默认值、本机 `python` 坏 stub 属环境非代码问题）
+- **合并**：`fb32486`（--no-ff merge）
+- **人工干预**：
+  1. 基础设施决策：worktree 从桌面同级改为**工作区内部**（`.worktrees/`，已 gitignore）——subagent 沙箱只允许写会话工作区，嵌套 worktree 实测可写（commit `0e8f32d`）；
+  2. 清理 subagent 留下的 4 个沙箱锁定 pytest 垃圾目录（父侧 danger-full-access）；
+  3. 解决 `.gitignore` 合并冲突（main 的 `.worktrees/` 行 vs task/t1 的 9 行）——首行为 GBK 编码，采用 git blob 字节级拼接保真合并
+- **学到的教训**：① subagent 沙箱写权限决定 worktree 位置，嵌套方案可行且与"每 task 一 worktree"兼容；② 本环境 pytest 统一 `-p no:cacheprovider` 避免沙箱缓存写入残留；③ `.gitignore` 首行 GBK，任何文本工具重写都会损坏，必须字节级操作
+
 ## 后续维护占位（实现阶段逐 task 追加）
 
-- [x] 冷启动 PLAN 修订回填主仓库（commit `f6a6ce1`）
-- [ ] T1~T20 每个 task：完成后追加一条（subagent 标识 / commit hash / 评审发现 / 人工修改）
+- [ ] T2~T20 每个 task：完成后追加一条（subagent 标识 / commit hash / 评审发现 / 人工修改）
