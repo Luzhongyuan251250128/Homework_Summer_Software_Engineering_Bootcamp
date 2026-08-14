@@ -75,11 +75,13 @@ make test   # 后端 pytest + 前端 vitest，一键全绿
 ## 分发与 CI
 
 - 镜像：`docker build` + `docker run`（见上）；CI（`.gitlab-ci.yml`）`unit-test` job 每次 push 自动跑测试，`build-image` job 构建镜像。
-- 云部署：Fly.io（推荐，免费额度）或 Render；部署后公网 URL 见下方「部署」。
+- 云部署：Railway（本实例已部署，公网 URL 见下）；Dockerfile 兼容 `$PORT` 动态端口。
 
 ## 部署
 
-公网 URL：**（部署完成后填写）** —— 项目当前尚未部署，暂无公网地址；上线后在上一行回填。
+公网 URL：**https://homeworksummersoftwareengineeringbootcamp-production.up.railway.app**
+- 已部署于 Railway（免费档，Docker 镜像，环境变量：`ADMIN_PASSWORD`/`MASTER_KEY`/`SESSION_SECRET`）。
+- 免费档注意事项：闲置一段时间后实例休眠，首次访问需等待 30–60 秒唤醒；重启后 SQLite 数据为临时存储，重新同步一次即可。
 
 ## 已知限制
 
