@@ -117,4 +117,37 @@ describe("IterationListPage", () => {
     expect(alert).toHaveTextContent("LLM_API_KEY 未配置：请先在配置页设置 API Key");
     expect(alert.className).toContain("alert");
   });
+
+  it("切换项目选择器后按新的 project_id 重新请求迭代列表", async () => {
+    const twoProjects = [
+      { id: 1, name: "平台组", description: "" },
+      { id: 2, name: "数据组", description: "" },
+    ];
+    const iterationsP1 = [
+      { id: 21, project_id: 1, name: "Sprint 1", start_date: "2026-01-05", end_date: "2026-01-16" },
+    ];
+    const iterationsP2 = [
+      { id: 31, project_id: 2, name: "Sprint A", start_date: "2026-02-02", end_date: "2026-02-13" },
+    ];
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(ok(twoProjects))
+      .mockResolvedValueOnce(ok(iterationsP1))
+      .mockResolvedValueOnce(ok(iterationsP2));
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <MemoryRouter initialEntries={["/iterations"]}>
+        <Routes>
+          <Route path="/iterations" element={<IterationListPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    // 默认选中第一个项目
+    expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
+    // 切换到第二个项目 → 重新请求 /api/projects/2/iterations
+    await userEvent.selectOptions(await screen.findByLabelText("select-project-iteration"), "2");
+    expect(await screen.findByText("Sprint A")).toBeInTheDocument();
+    expect(screen.queryByText("Sprint 1")).not.toBeInTheDocument();
+    const switchCall = fetchMock.mock.calls.find(([input]) => String(input) === "/api/projects/2/iterations");
+    expect(switchCall).toBeDefined();
+  });
 });

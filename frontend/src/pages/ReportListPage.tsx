@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
 import EmptyState from "../components/EmptyState";
+import FormField from "../components/FormField";
 import Icon from "../components/Icon";
 import NavLayout from "../components/Layout/NavLayout";
 import PageHeader from "../components/PageHeader";
@@ -30,16 +31,18 @@ const REPORT_COLUMNS: Column<ReportItem>[] = [
 ];
 
 /**
- * 报告列表页：加载项目，取第一个项目展示其报告列表；
- * 右上角可一键生成周报，成功后直接进入编辑页。
- * （多个项目时仅取第一个：与迭代页保持一致，报告里已说明。）
+ * 报告列表页：加载项目后默认选中第一个项目，展示其报告列表；
+ * 可通过项目选择器切换项目重新拉取对应报告；右上角可一键生成周报，成功后直接进入编辑页。
  */
 export default function ReportListPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [reports, setReports] = useState<ReportItem[] | null>(null);
   const [error, setError] = useState("");
   const [generating, setGenerating] = useState(false);
+
+  const currentProject = projects.find((p) => p.id === selectedId) ?? null;
 
   useEffect(() => {
     api<Project[]>("/projects")
@@ -49,20 +52,29 @@ export default function ReportListPage() {
           setReports([]);
           return;
         }
-        return api<ReportItem[]>(`/reports?project_id=${list[0].id}`).then(setReports);
+        setSelectedId((prev) => prev ?? list[0].id);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "加载失败"));
   }, []);
 
+  useEffect(() => {
+    if (selectedId === null) return;
+    let cancelled = false;
+    setReports(null);
+    api<ReportItem[]>(`/reports?project_id=${selectedId}`)
+      .then((list) => { if (!cancelled) setReports(list); })
+      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : "加载失败"); });
+    return () => { cancelled = true; };
+  }, [selectedId]);
+
   async function generateWeekly() {
-    const project = projects[0];
-    if (!project || generating) return;
+    if (!currentProject || generating) return;
     setGenerating(true);
     setError("");
     try {
       const r = await api<{ id: number }>("/reports/generate", {
         method: "POST",
-        body: JSON.stringify({ project_id: project.id, type: "weekly", scope: "project" }),
+        body: JSON.stringify({ project_id: currentProject.id, type: "weekly", scope: "project" }),
       });
       navigate(`/reports/${r.id}`);
     } catch (e) {
@@ -75,9 +87,9 @@ export default function ReportListPage() {
     <NavLayout>
       <PageHeader
         title="报告"
-        description={projects.length > 0 ? `项目：${projects[0].name}` : "按项目生成的周报与风险分析"}
+        description={currentProject ? `项目：${currentProject.name}` : "按项目生成的周报与风险分析"}
         actions={
-          projects.length > 0 && (
+          currentProject && (
             <Button variant="primary" disabled={generating} onClick={generateWeekly}>
               <Icon name="plus" size={14} />
               {generating ? "生成中…" : "生成周报"}
@@ -90,6 +102,24 @@ export default function ReportListPage() {
         <p role="alert" className="alert">
           <span>{error}</span>
         </p>
+      )}
+
+      {projects.length > 0 && (
+        <section className="panel section">
+          <div className="panel__body" style={{ maxWidth: 360 }}>
+            <FormField label="选择项目" htmlFor="report-project-select">
+              <select
+                id="report-project-select"
+                className="select"
+                value={selectedId ?? ""}
+                onChange={(e) => setSelectedId(Number(e.target.value))}
+                aria-label="select-project-report"
+              >
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </FormField>
+          </div>
+        </section>
       )}
 
       {projects.length === 0 ? (

@@ -392,7 +392,8 @@ textarea.input {
 .table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 .table th {
   text-align: left;
-  padding: var(--space-2) var(--table-cell-pad-x);
+  padding: var(--table-cell-pad-y) var(--table-cell-pad-x);
+  vertical-align: middle;
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
   color: var(--text-tertiary);

@@ -67,6 +67,7 @@ export default function ConfigPage() {
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [syncStates, setSyncStates] = useState<Record<number, SyncState>>({});
 
   async function load() {
@@ -125,6 +126,19 @@ export default function ConfigPage() {
   async function deleteRepo(id: number) {
     await api(`/repositories/${id}`, { method: "DELETE" });
     await load();
+  }
+
+  async function deleteProject() {
+    if (selected === null) return;
+    setError("");
+    try {
+      await api(`/projects/${selected}?confirm=true`, { method: "DELETE" });
+      setConfirmDelete(false);
+      setSelected(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "删除失败");
+    }
   }
 
   async function syncRepo(repo: Repository) {
@@ -222,13 +236,37 @@ export default function ConfigPage() {
                   id="project-select"
                   className="select"
                   value={selected ?? ""}
-                  onChange={(e) => setSelected(Number(e.target.value))}
+                  onChange={(e) => {
+                    setSelected(Number(e.target.value));
+                    setConfirmDelete(false);
+                  }}
                   aria-label="select-project"
                 >
                   <option value="" disabled>选择项目</option>
                   {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </FormField>
+              {confirmDelete && selected !== null ? (
+                <div className="delete-confirm section">
+                  <p className="muted">
+                    将删除项目「{projects.find((p) => p.id === selected)?.name}」，该项目下所有仓库、迭代与报告将一并删除，此操作不可恢复。
+                  </p>
+                  <div className="form-row" style={{ marginTop: "var(--space-2)" }}>
+                    <Button variant="danger" onClick={deleteProject}>确认删除</Button>
+                    <Button variant="secondary" onClick={() => setConfirmDelete(false)}>取消</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="form-row" style={{ marginTop: "var(--space-3)" }}>
+                  <Button
+                    variant="danger"
+                    disabled={selected === null}
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    删除项目
+                  </Button>
+                </div>
+              )}
             </div>
           </section>
 
