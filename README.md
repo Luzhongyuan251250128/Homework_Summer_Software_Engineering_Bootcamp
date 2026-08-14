@@ -61,7 +61,7 @@ docker run -p 8080:8000 \
 
 1. `.env` 从 `.env.example` 复制，**不得提交进 Git**（明文风险：文件与进程环境可见）。
 2. `ADMIN_PASSWORD`：登录口令（bcrypt 校验）。
-3. `MASTER_KEY`：主密钥，用于 AES-GCM 加密 Git Token。配置方式：优先环境变量 `MASTER_KEY`；未设置时启动会尝试读取系统钥匙串（`keyring`）；两者皆无则启动报错。**务必妥善备份主密钥——丢失将无法解密既有 Git Token。**
+3. `MASTER_KEY`：主密钥，用于 AES-GCM 加密 Git Token。配置方式：优先环境变量 `MASTER_KEY`；未设置时启动会尝试读取系统钥匙串（`keyring`）。首次使用可运行 `python -m app.cli_setup` 以隐藏输入方式录入主密钥并存入系统钥匙串；两者皆无则启动报错。**务必妥善备份主密钥——丢失将无法解密既有 Git Token。**
 4. `LLM_API_KEY`：可选；不配置时系统降级为纯统计平台。
 5. 在 WebUI「配置」页录入各仓库 Git Token（隐藏输入），状态页仅显示 last4 指纹，支持更新/清除。
 6. 提交前自查：`.env`、shell history、日志不得含真实凭据。
