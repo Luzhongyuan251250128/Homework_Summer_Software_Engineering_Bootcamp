@@ -2,3 +2,15 @@
 
 # 任务隔离 worktree（subagent 沙箱限制：须位于会话工作区内）
 .worktrees/
+
+
+# 杩愯鏃朵骇鐗╀笌鍑嵁
+backend/devhours.db
+backend/devhours.db-wal
+backend/devhours.db-shm
+.env
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+.pytest_cache/
