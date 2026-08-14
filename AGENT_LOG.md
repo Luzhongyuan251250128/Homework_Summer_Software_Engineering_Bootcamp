@@ -104,7 +104,10 @@
 
 ## 后续维护占位（收尾阶段）
 
-- [ ] 用户本机验证：`cd frontend && npm install && npx vitest run`（期望 5 测试全绿）
-- [ ] 用户验证：`docker build -t dev-hours .` + `docker run` 冷启动 + Fly.io 部署
-- [ ] 用户 push + GitLab CI pipeline（unit-test job pass）
+- [x] **前端 vitest 验证通过**：`npx vitest run` → **6 文件 / 9 测试全绿**（权限放开后沙箱可运行；此前"沙箱 spawn 管道限制"的降级记录保留，最终以本次实测为准）
+- [x] **后端最终回归**：63 passed（复验两次）
+- [x] **全部 20 个 task 分支已推送 origin**（task/t1、task/t2、task/task3~20 + coldstart-task5）；本地 `task/t1-test` 测试分支已清理
+- [ ] 用户验证：`docker build -t dev-hours .` + `docker run` 冷启动（本机无 docker CLI，沙箱无法执行）
+- [ ] 用户部署：Fly.io/Render，公网 URL 填 README「部署」节
+- [ ] 用户确认：GitLab CI pipeline（unit-test job）pass
 - [ ] 时间戳补录（用户提供真实时间）
