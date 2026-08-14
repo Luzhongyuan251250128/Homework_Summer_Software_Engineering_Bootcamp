@@ -184,7 +184,7 @@ RS-5 迭代末期集中：迭代后 1/3 时间窗提交数占比 ≥ 60%
 | 编号 | 威胁 | 后果 | 对策 |
 |---|---|---|---|
 | T1 | Git Token 泄露（硬编码进代码、进日志、明文落库） | 攻击者可读私有仓库 | 密文存储（AES-256-GCM）+ 日志脱敏 + README 自查清单 + CI 凭据扫描 |
-| T2 | LLM API Key 泄露/盗刷 | 费用损失 | 仅环境变量，不落 DB、不进日志；README 明示 `.env` 明文风险 |
+| T2 | LLM API Key 泄露/盗刷 | 费用损失 | 环境变量优先；Web 录入时 AES-GCM 密文入库（主密钥派生，仅存 last4 指纹），不进日志；README 明示 `.env` 明文风险 |
 | T3 | 未授权访问 WebUI | 泄露 Git 数据与报告 | 管理口令中间件 + 会话；部署层建议加 TLS |
 | T4 | 供应链依赖风险 | 依赖投毒 | 锁定依赖版本；CI 依赖审计 |
 | T5 | 主密钥丢失 | 所有 Git Token 无法解密 | 录入引导 + README 明示备份策略（keyring / 加密文件） |
@@ -326,7 +326,7 @@ CredentialMeta
 | 凭据 | 存储方式 | 录入/更新/清除 |
 |---|---|---|
 | Git Token（每仓库） | DB 密文（AES-256-GCM，主密钥派生，iv 随密文存） | Web 隐藏输入；状态页仅 last4；支持更新/清除 |
-| LLM API Key | 环境变量 `LLM_API_KEY` | 目标机 `.env` 配置；缺省时系统降级为纯统计模式 |
+| LLM API Key | 环境变量 `LLM_API_KEY` 优先；否则 Web 设置页录入，DB 密文（AES-256-GCM，主密钥派生，仅存 last4 指纹） | 环境变量在服务器端 `.env` 配置；Web「配置」页 LLM 设置卡隐藏输入录入/更新/清除（`PUT/DELETE /api/settings/llm`）；缺省时系统降级为纯统计模式 |
 | 管理口令 | 环境变量 `ADMIN_PASSWORD` → bcrypt 哈希比对 | 用于登录；口令中间件保护所有 `/api/*` |
 | 主密钥 Master Key | 系统钥匙串（`keyring` 库：Windows Credential Manager / macOS Keychain）或用户指定加密文件 | 首次启动引导隐藏录入；不落盘、不回显 |
 
@@ -353,7 +353,8 @@ CredentialMeta
 2. 配置 `ADMIN_PASSWORD`；可选 `MASTER_KEY` / `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL`。
 3. 首次启动按引导录入主密钥（隐藏输入）→ 存入系统钥匙串。
 4. 在 WebUI 录入各仓库 Git Token（隐藏输入），状态页只显示 last4。
-5. 提交前自查：`.env`、shell history、日志均不得含真实凭据。
+5. LLM Key 亦可直接在 WebUI「配置」页 LLM 设置卡录入（隐藏输入，密文入库，仅 last4 指纹）；环境变量 `LLM_API_KEY` 优先级更高，两者皆无时系统降级为纯统计模式。
+6. 提交前自查：`.env`、shell history、日志均不得含真实凭据。
 
 ### 7.6 CI
 

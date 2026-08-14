@@ -9,7 +9,7 @@
 - 统计仪表盘：团队总览 / 个人维度 / 迭代维度，ECharts 趋势图
 - LLM 报告（单轮，无自主循环）：周报与迭代风险分析（确定性规则引擎 RS-1~5 + LLM 归因文案）
 - 报告管理：编辑 / 版本历史 / 恢复 / 导出 Markdown
-- 安全：Git Token AES-256-GCM 密文存储、管理口令登录、LLM Key 仅环境变量
+- 安全：Git Token / LLM Key AES-256-GCM 密文存储（LLM Key 环境变量优先，或 Web 设置页录入）、管理口令登录
 
 ## 目录结构
 
@@ -55,14 +55,14 @@ docker run -p 8080:8000 \
 ```
 
 - 环境变量与 `backend/app/config.py` 的 Settings 字段一一对应（见 `.env.example`）。
-- 如需 LLM 周报/风险分析，追加 `-e LLM_API_KEY=sk-xxx`；不配置时系统降级为纯统计平台，同步/统计/仪表盘不受影响。
+- 如需 LLM 周报/风险分析，追加 `-e LLM_API_KEY=sk-xxx`（环境变量优先级最高）；也可在 WebUI「配置」页 LLM 设置卡录入（主密钥 AES-GCM 密文入库，仅存 last4 指纹）。两者皆无时系统降级为纯统计平台，同步/统计/仪表盘不受影响。
 
 ## Key 在目标机器的安全配置（必读）
 
 1. `.env` 从 `.env.example` 复制，**不得提交进 Git**（明文风险：文件与进程环境可见）。
 2. `ADMIN_PASSWORD`：登录口令（bcrypt 校验）。
 3. `MASTER_KEY`：主密钥，用于 AES-GCM 加密 Git Token。配置方式：优先环境变量 `MASTER_KEY`；未设置时启动会尝试读取系统钥匙串（`keyring`）。首次使用可运行 `python -m app.cli_setup` 以隐藏输入方式录入主密钥并存入系统钥匙串；两者皆无则启动报错。**务必妥善备份主密钥——丢失将无法解密既有 Git Token。**
-4. `LLM_API_KEY`：可选；不配置时系统降级为纯统计平台。
+4. `LLM_API_KEY`：可选。配置方式二选一：a) 环境变量（优先级最高）；b) WebUI「配置」页 LLM 设置卡录入（主密钥 AES-GCM 密文入库，仅存 last4 指纹，可随时清除）。两者皆无时系统降级为纯统计平台。
 5. 在 WebUI「配置」页录入各仓库 Git Token（隐藏输入），状态页仅显示 last4 指纹，支持更新/清除。
 6. 提交前自查：`.env`、shell history、日志不得含真实凭据。
 
@@ -94,5 +94,5 @@ make test   # 后端 pytest + 前端 vitest，一键全绿
 
 ## 安全边界
 
-- 凭据不硬编码、不进 Git 历史、不进日志；主密钥丢失将无法解密既有 Git Token。
+- 凭据不硬编码、不进 Git 历史、不进日志；主密钥丢失将无法解密既有 Git Token 与 Web 录入的 LLM Key。
 - 单用户 + 管理口令；公网部署建议在网关层启用 TLS。

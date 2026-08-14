@@ -23,6 +23,9 @@ function makeFetchMock(syncResult: unknown) {
     if (url === "/api/projects/1/iterations" && method === "GET") {
       return jsonResponse([]);
     }
+    if (url === "/api/settings/llm" && method === "GET") {
+      return jsonResponse({ configured: false, source: null });
+    }
     if (url === "/api/repositories/1/sync" && method === "POST") {
       return jsonResponse(syncResult);
     }

@@ -28,8 +28,10 @@ def build_risk_prompt(metrics: dict, signals: list[RiskSignal]) -> str:
 
 
 def generate_report(prompt: str, schema_hint: str,
-                    client: httpx.Client | None = None) -> dict:
-    if not settings.llm_api_key:
+                    client: httpx.Client | None = None,
+                    api_key: str | None = None) -> dict:
+    effective = api_key or settings.llm_api_key
+    if not effective:
         raise LLMError("LLM_API_KEY 未配置：无法生成报告，可降级使用纯统计视图")
     payload = {
         "model": settings.llm_model,
@@ -46,7 +48,7 @@ def generate_report(prompt: str, schema_hint: str,
     try:
         resp = http.post(
             f"{settings.llm_base_url}/chat/completions",
-            headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+            headers={"Authorization": f"Bearer {effective}"},
             json=payload,
         )
         resp.raise_for_status()
