@@ -23,6 +23,17 @@ type SyncState =
   | { status: "success"; commits: number | null }
   | { status: "failed"; error: string };
 
+interface LlmStatus {
+  configured: boolean;
+  source: "env" | "db" | null;
+}
+
+function llmStatusText(status: LlmStatus | null): string {
+  if (status === null) return "状态未知";
+  if (!status.configured) return "未配置";
+  return status.source === "env" ? "已配置（来源：环境变量）" : "已配置（来源：网页录入）";
+}
+
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -69,6 +80,10 @@ export default function ConfigPage() {
   const [selected, setSelected] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [syncStates, setSyncStates] = useState<Record<number, SyncState>>({});
+  const [llmStatus, setLlmStatus] = useState<LlmStatus | null>(null);
+  const [llmKey, setLlmKey] = useState("");
+  const [llmError, setLlmError] = useState("");
+  const [llmSaved, setLlmSaved] = useState(false);
 
   async function load() {
     const list = await api<Project[]>("/projects");
@@ -81,6 +96,11 @@ export default function ConfigPage() {
     }
     setRepos(r);
     setIterations(it);
+    try {
+      setLlmStatus(await api<LlmStatus>("/settings/llm"));
+    } catch {
+      setLlmStatus(null);
+    }
   }
 
   useEffect(() => { load().catch((e) => setError(String(e))); }, []);
@@ -161,6 +181,31 @@ export default function ConfigPage() {
         ...prev,
         [repo.id]: { status: "failed", error: err instanceof Error ? err.message : "同步失败" },
       }));
+    }
+  }
+
+  async function saveLlmKey(e: React.FormEvent) {
+    e.preventDefault();
+    setLlmError("");
+    setLlmSaved(false);
+    try {
+      await api("/settings/llm", { method: "PUT", body: JSON.stringify({ api_key: llmKey }) });
+      setLlmKey("");
+      setLlmSaved(true);
+      await load();
+    } catch (err) {
+      setLlmError(err instanceof Error ? err.message : "保存失败");
+    }
+  }
+
+  async function clearLlmKey() {
+    setLlmError("");
+    setLlmSaved(false);
+    try {
+      await api("/settings/llm", { method: "DELETE" });
+      await load();
+    } catch (err) {
+      setLlmError(err instanceof Error ? err.message : "清除失败");
     }
   }
 
@@ -389,6 +434,45 @@ export default function ConfigPage() {
           )}
         </>
       )}
+
+      <section className="panel section">
+        <div className="panel__header">
+          <h2 className="panel__title">LLM 设置</h2>
+          <span className="panel__meta">{llmStatusText(llmStatus)}</span>
+        </div>
+        <div className="panel__body" style={{ maxWidth: 480 }}>
+          <form onSubmit={saveLlmKey} className="form-row">
+            <FormField label="LLM API Key" htmlFor="llm-api-key-input">
+              <input
+                id="llm-api-key-input"
+                type="password"
+                aria-label="llm-api-key"
+                value={llmKey}
+                onChange={(e) => setLlmKey(e.target.value)}
+                placeholder="隐藏输入"
+              />
+            </FormField>
+            <Button type="submit" variant="primary">保存 Key</Button>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={llmStatus?.source !== "db"}
+              onClick={clearLlmKey}
+            >
+              清除
+            </Button>
+          </form>
+          {llmSaved && <p className="muted">已保存</p>}
+          {llmError && (
+            <p role="alert" className="alert">
+              <span>{llmError}</span>
+            </p>
+          )}
+          {llmStatus?.source === "env" && (
+            <p className="muted">由环境变量提供，请在服务器端配置</p>
+          )}
+        </div>
+      </section>
     </NavLayout>
   );
 }

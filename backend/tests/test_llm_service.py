@@ -18,6 +18,25 @@ def test_no_key_raises(monkeypatch):
         generate_report("p", "schema")
 
 
+def test_explicit_api_key_preferred_over_settings(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", "sk-from-env")
+    seen = {}
+
+    def handler(request):
+        seen["authorization"] = request.headers.get("Authorization")
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"summary": "ok"}'}}]})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    generate_report("p", "schema", client=client, api_key="sk-explicit")
+    assert seen["authorization"] == "Bearer sk-explicit"
+
+
+def test_no_key_anywhere_raises(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", None)
+    with pytest.raises(LLMError):
+        generate_report("p", "schema", api_key=None)
+
+
 def test_generate_parses_json(monkeypatch):
     monkeypatch.setattr(settings, "llm_api_key", "sk-fake")
     client = mock_client({"choices": [{"message": {"content": '{"summary": "本周进展正常"}'}}]})

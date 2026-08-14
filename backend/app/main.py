@@ -11,6 +11,7 @@ from .logging_config import setup_logging
 from .routers import auth as auth_router
 from .routers import projects as projects_router
 from .routers import reports as reports_router
+from .routers import settings as settings_router
 from .routers import stats as stats_router
 from .routers import sync as sync_router
 
@@ -44,6 +45,7 @@ def create_app(secret: str | None = None, db: Callable | None = None,
     app.include_router(sync_router.router)
     app.include_router(stats_router.router)
     app.include_router(reports_router.router)
+    app.include_router(settings_router.router)
 
     # SPA 托管：静态资源按文件返回，其余非 API 路径回退 index.html（前端路由直链/刷新）
     dist = static_dir or (Path(__file__).resolve().parent.parent / "static")

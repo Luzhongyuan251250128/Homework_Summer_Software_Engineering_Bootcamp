@@ -160,3 +160,4 @@ class CredentialMeta(Base):
     key_status: Mapped[str] = mapped_column(String(20), default="active")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last4: Mapped[str] = mapped_column(String(4), default="")
+    value_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)

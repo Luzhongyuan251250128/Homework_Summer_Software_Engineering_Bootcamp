@@ -4,7 +4,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..config import settings
 from ..db import get_db
+from ..security import decrypt_token, ensure_master_key
 from ..services import llm_service, report_service
 from ..services.llm_service import LLMError
 from .stats import iteration_stats
@@ -51,6 +53,22 @@ def _weekly_metrics(db: Session, project_id: int, scope: str) -> dict:
             "total_hours": round(total, 2), "total_commits": commits}
 
 
+def _resolve_llm_api_key(db: Session) -> str | None:
+    """LLM Key 解析：环境变量优先，其次 Web 录入的 DB 密文（SPEC §7.1）。"""
+    if settings.llm_api_key:
+        return settings.llm_api_key
+    row = db.query(models.CredentialMeta).filter_by(key_name="llm_api_key").first()
+    if row and row.value_encrypted:
+        return decrypt_token(row.value_encrypted, ensure_master_key())
+    return None
+
+
+def _call_llm(db: Session, prompt: str, schema_hint: str) -> dict:
+    api_key = _resolve_llm_api_key(db)
+    kwargs = {"api_key": api_key} if api_key is not None else {}
+    return llm_service.generate_report(prompt, schema_hint, **kwargs)
+
+
 @router.post("/generate")
 def generate(body: GenerateRequest, db: Session = Depends(get_db)):
     project = db.get(models.Project, body.project_id)
@@ -61,7 +79,8 @@ def generate(body: GenerateRequest, db: Session = Depends(get_db)):
     try:
         if body.type == "weekly":
             metrics = _weekly_metrics(db, body.project_id, body.scope)
-            result = llm_service.generate_report(
+            result = _call_llm(
+                db,
                 llm_service.build_weekly_prompt(metrics, body.scope),
                 '{"summary": "string", "highlights": ["string"], "risks": ["string"], "suggestions": ["string"]}',
             )
@@ -75,7 +94,8 @@ def generate(body: GenerateRequest, db: Session = Depends(get_db)):
             signals = [RiskSignal(s["code"], s["level"], s["description"]) for s in stats["signals"]]
             metrics = {"iteration": stats["iteration"]["name"],
                        "total_commits": stats["total_commits"]}
-            result = llm_service.generate_report(
+            result = _call_llm(
+                db,
                 llm_service.build_risk_prompt(metrics, signals),
                 '{"risks": [{"level": "high|medium|low", "description": "string", "analysis": "string"}]}',
             )
