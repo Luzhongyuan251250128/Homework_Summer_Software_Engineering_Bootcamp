@@ -1,0 +1,12 @@
+{
+  // 学号
+  "id": "251250128",
+  // 姓名
+  "name": "卢忠源",
+  // 仓库托管链接
+  "repo_url": "https://github.com/Luzhongyuan251250128/Homework_Summer_Software_Engineering_Bootcamp",
+  // 是否部署
+  "is_deployed": true,
+  // 部署或发布链接，上一项如果是 false 此处就是 release 链接，否则就是 deploy 链接
+  "deploy_release_url": "https://homeworksummersoftwareengineeringbootcamp-production.up.railway.app"
+}
