@@ -26,3 +26,4 @@ build-image:
     - docker push $IMAGE_NAME
   only:
     - main
+  when: manual
