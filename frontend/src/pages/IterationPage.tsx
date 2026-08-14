@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api/client";
+import { RiskBadge } from "../components/Badge";
+import EmptyState from "../components/EmptyState";
+import NavLayout from "../components/Layout/NavLayout";
+import PageHeader from "../components/PageHeader";
+import Table, { type Column } from "../components/Table";
 import TrendChart from "../components/TrendChart";
 
 interface IterationStats {
@@ -11,6 +16,12 @@ interface IterationStats {
   developers: { developer: string; commits: number; estimated_hours: number; metrics: Record<string, unknown> }[];
   signals: { code: string; level: string; description: string }[];
 }
+
+const DEVELOPER_COLUMNS: Column<IterationStats["developers"][number]>[] = [
+  { key: "developer", header: "开发者", mono: true },
+  { key: "commits", header: "提交" },
+  { key: "estimated_hours", header: "估算工时 (h)" },
+];
 
 export default function IterationPage() {
   const { id } = useParams();
@@ -24,50 +35,93 @@ export default function IterationPage() {
   }, [id]);
 
   return (
-    <div className="layout">
-      <div className="nav">
-        <a href="/">总览</a>
-        <a href="/developers">个人统计</a>
-        <a href="/config">配置</a>
-      </div>
-      <main style={{ padding: 24 }}>
-        {error && <p role="alert" style={{ color: "var(--danger)" }}>{error}</p>}
-        {stats && (
-          <>
-            <h1>迭代：{stats.iteration.name}</h1>
-            <p style={{ color: "var(--text-secondary)" }}>
-              {stats.iteration.start_date} ~ {stats.iteration.end_date} · 提交 {stats.total_commits} · 凌晨占比 {(stats.night_ratio * 100).toFixed(0)}%
-            </p>
-            <section className="card" style={{ marginTop: 16 }}>
-              <h2>风险信号</h2>
-              {stats.signals.length === 0
-                ? <p style={{ color: "var(--text-secondary)" }}>暂无风险信号</p>
-                : <ul>{stats.signals.map((s) => (
-                    <li key={s.code} style={{ color: s.level === "high" ? "var(--danger)" : "var(--warning)" }}>
-                      <strong>{s.code}</strong> [{s.level}] {s.description}
+    <NavLayout>
+      {error && (
+        <p role="alert" className="alert">
+          <span>{error}</span>
+        </p>
+      )}
+      {stats && (
+        <>
+          <PageHeader
+            title={`迭代：${stats.iteration.name}`}
+            description={
+              <>
+                <span className="mono">{stats.iteration.start_date}</span> ~{" "}
+                <span className="mono">{stats.iteration.end_date}</span>
+                {" · "}提交 {stats.total_commits}
+                {" · "}凌晨占比 {(stats.night_ratio * 100).toFixed(0)}%
+              </>
+            }
+          />
+
+          <section className="panel">
+            <div className="panel__header">
+              <h2 className="panel__title">风险信号</h2>
+              <span className="panel__meta">{stats.signals.length} 条</span>
+            </div>
+            <div className="panel__body">
+              {stats.signals.length === 0 ? (
+                <EmptyState
+                  title="暂无风险信号"
+                  description="本迭代未发现确定性规则引擎标记的风险。"
+                />
+              ) : (
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                  {stats.signals.map((s) => (
+                    <li
+                      key={s.code}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "var(--space-3)",
+                        padding: "10px 12px",
+                        background: "var(--surface-muted)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-md)",
+                      }}
+                    >
+                      <RiskBadge level={s.level} />
+                      <code
+                        className="mono"
+                        style={{ color: "var(--text-secondary)", flex: "none", fontSize: 12 }}
+                      >
+                        {s.code}
+                      </code>
+                      <span style={{ color: "var(--text)", fontSize: "var(--fs-sm)" }}>{s.description}</span>
                     </li>
-                  ))}</ul>}
-            </section>
-            <section className="card" style={{ marginTop: 16 }}>
-              <h2>每日提交</h2>
-              <TrendChart data={stats.daily} />
-            </section>
-            <section className="card" style={{ marginTop: 16 }}>
-              <h2>成员快照</h2>
-              <table>
-                <thead><tr><th>开发者</th><th>提交</th><th>估算工时 (h)</th></tr></thead>
-                <tbody>
-                  {stats.developers.map((d) => (
-                    <tr key={d.developer}>
-                      <td>{d.developer}</td><td>{d.commits}</td><td>{d.estimated_hours}</td>
-                    </tr>
                   ))}
-                </tbody>
-              </table>
-            </section>
-          </>
-        )}
-      </main>
-    </div>
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="panel section">
+            <div className="panel__header">
+              <h2 className="panel__title">每日提交</h2>
+              <span className="panel__meta">迭代期内按日期</span>
+            </div>
+            <div className="panel__body">
+              <TrendChart data={stats.daily} />
+            </div>
+          </section>
+
+          <section className="panel section">
+            <div className="panel__header">
+              <h2 className="panel__title">成员快照</h2>
+              <span className="panel__meta">{stats.developers.length} 名成员</span>
+            </div>
+            <div className="panel__body">
+              <Table
+                columns={DEVELOPER_COLUMNS}
+                rows={stats.developers}
+                rowKey={(d) => d.developer}
+                empty={<EmptyState title="还没有数据" description="迭代内暂无成员提交记录。" />}
+              />
+            </div>
+          </section>
+        </>
+      )}
+    </NavLayout>
   );
 }
