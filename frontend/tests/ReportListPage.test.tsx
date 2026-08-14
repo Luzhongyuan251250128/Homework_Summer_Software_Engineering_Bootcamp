@@ -38,8 +38,10 @@ describe("ReportListPage", () => {
     expect(screen.getByText("草稿")).toBeInTheDocument();
     expect(screen.getByText("已定稿")).toBeInTheDocument();
     expect(screen.getByText("2026-08-14T00:00:00")).toBeInTheDocument();
-    const editLink = screen.getByRole("link", { name: /编辑/ });
-    expect(editLink).toHaveAttribute("href", "/reports/11");
+    const editLinks = screen.getAllByRole("link", { name: /编辑/ });
+    expect(editLinks).toHaveLength(2);
+    expect(editLinks[0]).toHaveAttribute("href", "/reports/11");
+    expect(editLinks[1]).toHaveAttribute("href", "/reports/12");
     // 加载顺序：先 GET /api/projects，再按第一个项目 GET /api/reports
     expect(fetchMock.mock.calls[0][0]).toBe("/api/projects");
     expect(fetchMock.mock.calls[1][0]).toBe("/api/reports?project_id=1");
